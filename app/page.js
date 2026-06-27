@@ -437,6 +437,33 @@ export default function App() {
     window.open(`https://wa.me/${telFinal}?text=${encodeURIComponent(texto)}`, '_blank')
   }
 
+  // Evolución de Casos
+  const cargarEvolucion = (c) => {
+    // 1. Cargar paciente
+    setPaciente({
+      ...c.pacientes,
+      id: c.paciente_id,
+      nombre: c.pacientes?.nombre || '',
+      cedula: c.pacientes?.cedula || '',
+      telefono: c.paciente_telefono || '',
+      motivo_consulta: c.motivo || '',
+      contexto_contingencia: c.contexto_contingencia?.split(', ') || []
+    })
+    
+    // 2. Cargar historia como base para evolución
+    setHistoria({
+      ...c,
+      anamnesis: `[Evolución sugerida tras consulta del ${new Date(c.hora_inicio).toLocaleDateString()}] \nPaciente presentaba: ${c.diagnostico}. \nSubjetivo actual: `,
+      notas: c.notas || ''
+    })
+
+    // 3. Cargar récipe previo
+    setRecipe(c.recipe || { diagnostico_confirmado: '', medicamentos: [], indicaciones: '', proxima_cita: '' })
+    
+    setActiveTab('clinic')
+    showAlert("Iniciando Evolución", "Se han cargado los datos de la sesión anterior como base.", "info")
+  }
+
   // Tarea 4: Informe de Jornada
   const generarInformeJornada = () => {
     const doc = new jsPDF()
@@ -611,43 +638,55 @@ export default function App() {
       {/* Area Principal */}
       <main className="flex-1 overflow-y-auto p-4 mb-20">
         
-        {/* PANTALLA: BUSCADOR */}
-        {activeTab === 'search' && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="relative">
-              <Search className="absolute left-4 top-4 text-slate-400" />
-              <input 
-                placeholder="Buscar por Nombre o Cédula..." 
-                className="w-full p-4 pl-12 bg-white rounded-2xl shadow-xl outline-none border-2 border-transparent focus:border-medical-300 transition-all"
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-3">
-              {searchResults.length > 0 ? (
-                searchResults.map(p => (
-                  <button key={p.id} onClick={() => selectPatient(p)} className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between hover:border-medical-300">
-                    <div className="text-left">
-                      <p className="font-bold text-slate-700">{p.nombre}</p>
-                      <p className="text-xs text-slate-400">{p.cedula}</p>
+            {/* PANTALLA: FINALIZADO (RECIFE Y RESUMEN) */}
+            {finalizado && (
+              <div className="space-y-6 animate-in zoom-in duration-500 pb-24">
+                <div className="bg-medical-600 text-white p-8 rounded-[40px] text-center shadow-2xl relative overflow-hidden">
+                  <div className="relative z-10 space-y-2">
+                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
+                      <CheckCircle2 className="w-10 h-10" />
                     </div>
-                    <ArrowRight className="text-medical-500" />
-                  </button>
-                ))
-              ) : searchQuery.length >= 3 && (
-                <div className="text-center p-10 text-slate-400 italic">No hay resultados. Crea un paciente nuevo.</div>
-              )}
-            </div>
+                    <h2 className="text-3xl font-black uppercase tracking-tighter">¡Consulta Exitosa!</h2>
+                    <p className="text-sm font-bold text-medical-100">Atención guardada y récipe listo.</p>
+                  </div>
+                </div>
 
-            {/* Recientes/Dashboard */}
-            <div className="pt-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Atenciones de hoy</h3>
-              <div className="bg-white rounded-3xl p-6 text-center border-2 border-dashed border-slate-200">
-                <HistoryIcon className="mx-auto text-slate-300 mb-2" />
-                <p className="text-sm text-slate-400">Inicia una búsqueda o crea un nuevo paciente para empezar.</p>
+                <div className="bg-white p-6 rounded-[32px] shadow-xl border border-slate-100 space-y-6">
+                  <div className="flex items-center gap-4 border-b border-slate-50 pb-4">
+                    <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400"><UserIcon /></div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Paciente</p>
+                      <p className="text-lg font-black text-slate-900 uppercase">{paciente.nombre}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <button onClick={() => setShowPreview(true)} className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-3xl border-2 border-transparent hover:border-medical-200 transition-all gap-2">
+                      <FileText className="w-8 h-8 text-medical-600" />
+                      <span className="text-[10px] font-black uppercase">Ver Documento</span>
+                    </button>
+                    <button onClick={enviarWhatsAppPaciente} className="flex flex-col items-center justify-center p-6 bg-green-50 rounded-3xl border-2 border-transparent hover:border-green-200 transition-all gap-2">
+                      <Send className="w-8 h-8 text-green-600" />
+                      <span className="text-[10px] font-black uppercase text-green-700">Enviar WhatsApp</span>
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      setFinalizado(false);
+                      setSearchQuery('');
+                      setActiveTab('search');
+                      setPaciente({id:'', nombre:'', edad:'', cedula:'', telefono:'', pref_contacto:'WhatsApp', sexo:'', alergias:'', contexto_contingencia:[], otros_detalles_contingencia:''});
+                      setHistoria({anamnesis:'', examen_fisico:'', diagnostico:'', nivel_gravedad:'Leve', banderas_rojas:[]});
+                      setRecipe({diagnostico_confirmado:'', medicamentos:[], indicaciones:'', proxima_cita:''});
+                    }} 
+                    className="w-full py-5 bg-slate-900 dark:bg-slate-800 text-white rounded-3xl font-black uppercase text-sm shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                     Nueva Consulta <ArrowRight />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -1112,21 +1151,24 @@ export default function App() {
              <div className="space-y-3">
                {loading && <Loader2 className="animate-spin mx-auto text-medical-500" />}
                {jornadaConsultas.map((c, i) => (
-                 <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="font-black text-slate-900 leading-none">{c.pacientes?.nombre}</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
-                        {new Date(c.hora_inicio).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} 
-                        {c.hora_fin && ` - ${new Date(c.hora_fin).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`}
-                      </p>
-                      <p className="text-xs text-slate-600 line-clamp-1">{c.diagnostico}</p>
-                    </div>
-                    {c.recipe?.medicamentos?.length > 0 ? (
-                       <span className="bg-green-100 text-green-700 text-[8px] font-black px-2 py-1 rounded-full uppercase">Con Récipe</span>
-                    ) : (
-                       <span className="bg-slate-100 text-slate-400 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">Sin Récipe</span>
-                    )}
-                 </div>
+                  <button key={i} onClick={() => cargarEvolucion(c)} className="w-full bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between text-left hover:border-medical-300 active:scale-95 transition-all">
+                     <div className="space-y-1">
+                       <p className="font-black text-slate-900 leading-none">{c.pacientes?.nombre} <span className="text-[10px] text-medical-600 ml-2">Abrir Evolución</span></p>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase">
+                         {new Date(c.hora_inicio).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} 
+                         {c.hora_fin && ` - ${new Date(c.hora_fin).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`}
+                       </p>
+                       <p className="text-xs text-slate-600 line-clamp-1">{c.diagnostico}</p>
+                     </div>
+                     {c.recipe?.medicamentos?.length > 0 ? (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="bg-green-100 text-green-700 text-[8px] font-black px-2 py-1 rounded-full uppercase">Con Récipe</span>
+                          <ArrowRight className="w-4 h-4 text-slate-300" />
+                        </div>
+                     ) : (
+                        <ArrowRight className="w-4 h-4 text-slate-200" />
+                     )}
+                  </button>
                ))}
                {jornadaConsultas.length === 0 && !loading && (
                  <div className="text-center p-10 text-slate-400 italic">No hay atenciones registradas hoy.</div>
@@ -1366,31 +1408,34 @@ export default function App() {
         </div>
       )}
 
-      {/* Navegación Inferior (Estilo Móvil Premium) */}
-      <nav className="bg-white border-t p-2 flex justify-between items-center w-full sticky bottom-0 z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] overflow-x-auto no-scrollbar">
-        <button onClick={() => setActiveTab('search')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'search' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
-          <Search className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-bold">BUSCAR</span>
+      {/* Navegación Inferior (Barra de Progreso Dinámica) */}
+      <nav className="bg-white border-t p-2 flex justify-between items-center w-full sticky bottom-0 z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] relative">
+        {/* Línea de progreso de fondo */}
+        <div className="absolute top-[35%] left-[10%] right-[10%] h-[2px] bg-slate-100 -z-10"></div>
+        
+        <button onClick={() => setActiveTab('search')} className={`flex flex-col items-center min-w-[60px] p-2 rounded-xl transition-all relative ${activeTab === 'search' ? 'text-medical-600 scale-110' : 'text-slate-400 opacity-50'}`}>
+          <div className={`w-3 h-3 rounded-full mb-2 border-2 ${activeTab === 'search' ? 'bg-medical-600 border-medical-200 ring-4 ring-medical-50' : 'bg-white border-slate-200'}`}></div>
+          <span className="text-[9px] font-black uppercase">Inicio</span>
         </button>
-        <button onClick={() => setActiveTab('patient')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'patient' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
-          <UserIcon className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-bold">PACIENTE</span>
+
+        <button onClick={() => setActiveTab('patient')} className={`flex flex-col items-center min-w-[60px] p-2 rounded-xl transition-all relative ${activeTab === 'patient' ? 'text-medical-600 scale-110' : 'text-slate-400 opacity-50'}`}>
+          <div className={`w-3 h-3 rounded-full mb-2 border-2 ${activeTab === 'patient' ? 'bg-medical-600 border-medical-200 ring-4 ring-medical-50' : 'bg-white border-slate-200'}`}></div>
+          <span className="text-[9px] font-black uppercase tracking-tighter">Paciente</span>
         </button>
-        <button onClick={() => setActiveTab('clinic')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'clinic' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
-          <Stethoscope className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-bold">CONSULTA</span>
+
+        <button onClick={() => setActiveTab('clinic')} className={`flex flex-col items-center min-w-[60px] p-2 rounded-xl transition-all relative ${activeTab === 'clinic' ? 'text-medical-600 scale-110' : 'text-slate-400 opacity-50'}`}>
+          <div className={`w-3 h-3 rounded-full mb-2 border-2 ${activeTab === 'clinic' ? 'bg-medical-600 border-medical-200 ring-4 ring-medical-50' : 'bg-white border-slate-200'}`}></div>
+          <span className="text-[9px] font-black uppercase tracking-tighter">Evaluación</span>
         </button>
-        <button onClick={() => setActiveTab('recipe')} className={`flex flex-col items-center min-w-[56px] p-2 rounded-xl transition-all ${activeTab === 'recipe' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
-          <ClipboardCheck className="w-5 h-5 mb-1" />
-          <span className="text-[8px] font-black uppercase tracking-tighter">Récipe</span>
+
+        <button onClick={() => setActiveTab('recipe')} className={`flex flex-col items-center min-w-[60px] p-2 rounded-xl transition-all relative ${activeTab === 'recipe' ? 'text-medical-600 scale-110' : 'text-slate-400 opacity-50'}`}>
+          <div className={`w-3 h-3 rounded-full mb-2 border-2 ${activeTab === 'recipe' ? 'bg-medical-600 border-medical-200 ring-4 ring-medical-50' : 'bg-white border-slate-200'}`}></div>
+          <span className="text-[9px] font-black uppercase tracking-tighter">Récipe</span>
         </button>
-        <button onClick={() => setActiveTab('jornada')} className={`flex flex-col items-center min-w-[56px] p-2 rounded-xl transition-all ${activeTab === 'jornada' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
+
+        <button onClick={() => setActiveTab('jornada')} className={`flex flex-col items-center min-w-[60px] p-2 rounded-xl transition-all relative ${activeTab === 'jornada' ? 'text-slate-500 scale-110' : 'text-slate-300 opacity-50'}`}>
           <Calendar className="w-5 h-5 mb-1" />
-          <span className="text-[8px] font-black uppercase tracking-tighter">Jornada</span>
-        </button>
-        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center min-w-[56px] p-2 rounded-xl transition-all ${activeTab === 'profile' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
-          <UserCircle className="w-5 h-5 mb-1" />
-          <span className="text-[8px] font-black uppercase tracking-tighter">Perfil</span>
+          <span className="text-[8px] font-black uppercase">Jornada</span>
         </button>
       </nav>
 
