@@ -82,7 +82,8 @@ export default function App() {
     caracteristicas_sintoma: '',
     antecedentes: '',
     medicamentos_habituales: '',
-    contexto_contingencia: [], // Reemplaza toggles con array de chips
+    contexto_contingencia: [],
+    otros_detalles_contingencia: '',
     zona_desastre: false
   })
   const [historia, setHistoria] = useState({ 
@@ -335,7 +336,7 @@ export default function App() {
         motivo: paciente.motivo_consulta,
         inicio_sintomas: paciente.inicio_sintomas,
         caracteristicas_sintoma: paciente.caracteristicas_sintoma,
-        contexto_contingencia: (paciente.contexto_contingencia || []).join(', '),
+        contexto_contingencia: [...(paciente.contexto_contingencia || []), paciente.otros_detalles_contingencia].filter(Boolean).join(', '),
         antecedentes: paciente.antecedentes,
         alergias: paciente.alergias,
         medicamentos_habituales: paciente.medicamentos_habituales,
@@ -829,6 +830,16 @@ export default function App() {
                       </div>
                     ))}
 
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-orange-400 uppercase tracking-widest px-1">Otros detalles del contexto:</label>
+                      <input 
+                        value={paciente.otros_detalles_contingencia || ''} 
+                        onChange={e => setPaciente({...paciente, otros_detalles_contingencia: e.target.value})}
+                        className="w-full p-3 bg-white/50 rounded-xl border border-orange-100 outline-none text-xs font-bold text-orange-900 placeholder:text-orange-200" 
+                        placeholder="Escribe otros detalles aquí..."
+                      />
+                    </div>
+
                     {(paciente.contexto_contingencia?.includes('🧱 Estuvo atrapado bajo escombros') || paciente.contexto_contingencia?.includes('🦴 Posible trauma por derrumbe')) && (
                       <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3 text-yellow-800 text-sm font-semibold animate-pulse">
                         ⚠️ Considerar: síndrome de aplastamiento, trauma cerrado, lesiones en columna.
@@ -996,7 +1007,7 @@ export default function App() {
                   </button>
                 </div>
                 
-                {recipe.medicamentos.map((m, i) => (
+                {recipe?.medicamentos?.map((m, i) => (
                   <div key={i} className="grid grid-cols-12 gap-2 pb-4 border-b border-slate-50 items-center">
                     <input 
                       placeholder="Medicamento" 
@@ -1018,7 +1029,7 @@ export default function App() {
                         setRecipe({...recipe, medicamentos: next})
                       }}
                     />
-                    <button onClick={() => setRecipe({...recipe, medicamentos: recipe.medicamentos.filter((_, idx)=>idx!==i)})} className="col-span-1 text-red-300">
+                    <button onClick={() => setRecipe({...recipe, medicamentos: (recipe.medicamentos || []).filter((_, idx)=>idx!==i)})} className="col-span-1 text-red-300">
                       <Trash2 className="w-4 h-4"/>
                     </button>
                   </div>
@@ -1271,13 +1282,14 @@ export default function App() {
                        <p className="text-[10px] font-black text-medical-600 uppercase tracking-widest mb-2">Diagnóstico Presuntivo:</p>
                        <p className="text-xl font-black text-slate-900 uppercase leading-snug">{historia.diagnostico || 'Evaluación Médica Estándar'}</p>
                        <p className="text-xs text-slate-500 font-bold mt-2 uppercase tracking-tighter">Nivel de Gravedad: {historia.nivel_gravedad}</p>
+                       {historia.diagnostico_otros && <p className="text-xs text-slate-600 mt-2 italic">Otros: {historia.diagnostico_otros}</p>}
                     </div>
 
-                    {recipe.medicamentos.length > 0 && (
+                    {recipe.medicamentos?.length > 0 && (
                       <div className="space-y-4 mt-6">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Tratamiento Sugerido:</p>
                         <div className="space-y-4 pl-4">
-                          {recipe.medicamentos.map((m, i) => (
+                          {recipe.medicamentos?.map((m, i) => (
                             <div key={i} className="flex flex-col">
                               <p className="text-lg font-black text-slate-900 uppercase">{i+1}. {m.nombre}</p>
                               <p className="text-sm text-slate-600 italic font-medium">{m.dosis}</p>
