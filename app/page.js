@@ -39,13 +39,20 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [finalizado, setFinalizado] = useState(false)
+  const [jornadaConsultas, setJornadaConsultas] = useState([])
+  const [horaInicioConsulta, setHoraInicioConsulta] = useState(null)
 
   // Modales
   const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '' })
   const showAlert = (title, message, type = 'info') => setModal({ open: true, title, message, type })
 
-  // Datos
-  const [medico, setMedico] = useState({ nombre: '', especialidad: '', registro: '' })
+   // Datos
+  const [medico, setMedico] = useState({ 
+    nombre: '', 
+    especialidad: '', 
+    registro: '',
+    whatsapp_coordinador: '' // Nuevo
+  })
   const [paciente, setPaciente] = useState({ 
     id: '', 
     nombre: '', 
@@ -96,6 +103,7 @@ export default function App() {
   const selectPatient = (p) => {
     setPaciente({ ...p, id: p.id, medicamentos_previos: p.medicamentos || '' })
     setSearchResults([])
+    setHoraInicioConsulta(new Date().toISOString()) // Tarea 2: Inicia timer consulta
     setActiveTab('patient')
   }
 
@@ -231,18 +239,86 @@ export default function App() {
         anamnesis: historia.anamnesis,
         examen_fisico: historia.examen_fisico,
         diagnostico: historia.diagnostico,
-        recipe: recipe
+        recipe: recipe,
+        medico_nombre: medico.nombre, // Tarea 2
+        hora_inicio: horaInicioConsulta, // Tarea 2
+        hora_fin: new Date().toISOString() // Tarea 2
       })
       
       if (cError) throw cError
 
       setFinalizado(true)
+      fetchJornada() // Actualizar lista de jornada
       showAlert("¡Consulta Guardada!", "La atención ha sido registrada exitosamente.", "success")
     } catch (err) { 
         showAlert("Error Guardado", "No pudimos conectar con Supabase. Revisa tu internet.", "error")
     }
     finally { setSaving(false) }
   }
+
+  const fetchJornada = async () => {
+    setLoading(true)
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const { data, error } = await supabase
+        .from('consultas')
+        .select('*, pacientes(nombre)')
+        .gte('hora_inicio', `${today}T00:00:00`)
+        .lte('hora_inicio', `${today}T23:59:59`)
+        .order('hora_inicio', { ascending: true })
+      
+      if (error) throw error
+      setJornadaConsultas(data || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Tarea 4: Informe de Jornada
+  const generarInformeJornada = () => {
+    const doc = new jsPDF()
+    const now = new Date()
+    
+    doc.setFontSize(18).text("INFORME DE JORNADA MÉDICA", 105, 20, { align: 'center' })
+    doc.setFontSize(10).text(`Fecha: ${now.toLocaleDateString()}\nMédico: ${medico.nombre}\nTotal de pacientes: ${jornadaConsultas.length}`, 20, 35)
+
+    doc.autoTable({
+      startY: 50,
+      head: [['#', 'Paciente', 'Hora', 'Diagnóstico', 'Récipe']],
+      body: jornadaConsultas.map((c, i) => [
+        i + 1,
+        c.pacientes?.nombre || 'N/A',
+        new Date(c.hora_inicio).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        c.diagnostico?.substring(0, 30) + '...',
+        c.recipe?.medicamentos?.length > 0 ? 'Sí' : 'No'
+      ]),
+      headStyles: { fillColor: [15, 23, 42] }
+    })
+    
+    doc.save(`Jornada_${now.toISOString().split('T')[0]}.pdf`)
+
+    // WhatsApp al Coordinador
+    let total = jornadaConsultas.length
+    let msg = `*INFORME DE JORNADA - ${now.toLocaleDateString()}*\n`
+    msg += `*Médico:* ${medico.nombre}\n`
+    msg += `*Total pacientes:* ${total}\n\n`
+    
+    jornadaConsultas.forEach(c => {
+      let hora = new Date(c.hora_inicio).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      let rec = c.recipe?.medicamentos?.length > 0 ? '✅' : '❌'
+      msg += `• ${hora} - ${c.pacientes?.nombre} - ${c.diagnostico} ${rec}\n`
+    })
+
+    msg += `\nGenerado desde Voluntariado Médico App`
+    const url = `https://wa.me/${medico.whatsapp_coordinador}?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank')
+  }
+
+  useEffect(() => {
+    if (activeTab === 'jornada') fetchJornada()
+  }, [activeTab])
 
   // PDF Profesional (Tamaño Carta)
   const descargarPDF = () => {
@@ -529,15 +605,76 @@ export default function App() {
           </div>
         )}
 
+        {/* PANTALLA: JORNADA (INFORME DIARIO) */}
+        {activeTab === 'jornada' && (
+          <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-24">
+             <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl flex justify-between items-end">
+                <div>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Resumen del Día</p>
+                  <h2 className="text-4xl font-black">{jornadaConsultas.length}</h2>
+                  <p className="text-xs font-bold text-slate-300">Pacientes atendidos hoy</p>
+                </div>
+                <Calendar className="w-12 h-12 opacity-20" />
+             </div>
+
+             <div className="space-y-3">
+               {loading && <Loader2 className="animate-spin mx-auto text-medical-500" />}
+               {jornadaConsultas.map((c, i) => (
+                 <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="font-black text-slate-900 leading-none">{c.pacientes?.nombre}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">
+                        {new Date(c.hora_inicio).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} 
+                        {c.hora_fin && ` - ${new Date(c.hora_fin).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`}
+                      </p>
+                      <p className="text-xs text-slate-600 line-clamp-1">{c.diagnostico}</p>
+                    </div>
+                    {c.recipe?.medicamentos?.length > 0 ? (
+                       <span className="bg-green-100 text-green-700 text-[8px] font-black px-2 py-1 rounded-full uppercase">Con Récipe</span>
+                    ) : (
+                       <span className="bg-slate-100 text-slate-400 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">Sin Récipe</span>
+                    )}
+                 </div>
+               ))}
+               {jornadaConsultas.length === 0 && !loading && (
+                 <div className="text-center p-10 text-slate-400 italic">No hay atenciones registradas hoy.</div>
+               )}
+             </div>
+
+             {jornadaConsultas.length > 0 && (
+               <button 
+                 onClick={generarInformeJornada}
+                 className="w-full py-5 bg-medical-600 text-white rounded-3xl font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+               >
+                 <Download className="w-6 h-6" /> GENERAR INFORME DEL DÍA
+               </button>
+             )}
+          </div>
+        )}
+
         {/* PANTALLA: PERFIL MEDICO */}
         {activeTab === 'profile' && (
           <div className="bg-white p-8 rounded-3xl shadow-xl space-y-6 animate-in slide-in-from-bottom-5">
-            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800"><UserCircle className="text-medical-500" /> Perfil Profesional</h2>
+            <h2 className="text-xl font-black flex items-center gap-2 text-slate-900 border-b pb-4"><UserCircle className="text-medical-500" /> PERFIL PROFESIONAL</h2>
             <div className="space-y-4">
-               <div><label className="text-[10px] font-bold text-slate-400">Nombre del Médico</label><input value={medico.nombre} onChange={e=>setMedico({...medico, nombre:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border outline-none" /></div>
-               <div><label className="text-[10px] font-bold text-slate-400">Especialidad</label><input value={medico.especialidad} onChange={e=>setMedico({...medico, especialidad:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border outline-none" /></div>
-               <div><label className="text-[10px] font-bold text-slate-400">Registro Médico / ID Sanitario</label><input value={medico.registro} onChange={e=>setMedico({...medico, registro:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border outline-none" /></div>
-               <button onClick={saveMedico} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold shadow-lg">Guardar Cambios Localmente</button>
+               <div>
+                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nombre Completo</label>
+                 <input value={medico.nombre} onChange={e=>setMedico({...medico, nombre:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-medical-500 outline-none font-bold" />
+               </div>
+               <div>
+                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Especialidad</label>
+                 <input value={medico.especialidad} onChange={e=>setMedico({...medico, especialidad:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-medical-500 outline-none font-bold" />
+               </div>
+               <div>
+                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reg. Médico / ID</label>
+                 <input value={medico.registro} onChange={e=>setMedico({...medico, registro:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-medical-500 outline-none font-bold" />
+               </div>
+               <div className="pt-4 border-t">
+                 <label className="text-[10px] font-bold text-medical-600 uppercase tracking-widest">WhatsApp Coordinador</label>
+                 <input value={medico.whatsapp_coordinador} onChange={e=>setMedico({...medico, whatsapp_coordinador:e.target.value})} className="w-full p-4 bg-medical-50 rounded-2xl border-2 border-medical-200 outline-none font-bold text-medical-900" placeholder="Ej: 584120000000" />
+                 <p className="text-[9px] text-medical-400 mt-1">* Código de país sin el símbolo +</p>
+               </div>
+               <button onClick={saveMedico} className="w-full py-5 bg-slate-900 text-white rounded-3xl font-black shadow-xl hover:bg-slate-800 transition-all active:scale-95 uppercase tracking-widest">Guardar Perfil</button>
             </div>
           </div>
         )}
@@ -558,13 +695,17 @@ export default function App() {
           <Stethoscope className="w-5 h-5 mb-1" />
           <span className="text-[10px] font-bold">CONSULTA</span>
         </button>
-        <button onClick={() => setActiveTab('recipe')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'recipe' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
+        <button onClick={() => setActiveTab('recipe')} className={`flex flex-col items-center min-w-[56px] p-2 rounded-xl transition-all ${activeTab === 'recipe' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
           <ClipboardCheck className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-bold">RÉCIPE</span>
+          <span className="text-[8px] font-black uppercase tracking-tighter">Récipe</span>
         </button>
-        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'profile' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
+        <button onClick={() => setActiveTab('jornada')} className={`flex flex-col items-center min-w-[56px] p-2 rounded-xl transition-all ${activeTab === 'jornada' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
+          <Calendar className="w-5 h-5 mb-1" />
+          <span className="text-[8px] font-black uppercase tracking-tighter">Jornada</span>
+        </button>
+        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center min-w-[56px] p-2 rounded-xl transition-all ${activeTab === 'profile' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
           <UserCircle className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-bold">PERFIL</span>
+          <span className="text-[8px] font-black uppercase tracking-tighter">Perfil</span>
         </button>
       </nav>
 
