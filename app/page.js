@@ -1,10 +1,7 @@
 'use client'
 
-export const dynamic = 'force-dynamic'; // Build trigger: fixed connection logic
-
-import { useState, useEffect, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
-import MicButton from '@/components/MicButton'
+import React, { useState, useEffect, useRef } from 'react'
+import { getSupabase } from '@/lib/supabase'
 import { 
   Search, 
   UserPlus, 
@@ -22,12 +19,17 @@ import {
   ArrowRight,
   User as UserIcon,
   Calendar,
-  Share
+  Share,
+  CheckCircle2,
+  Info,
+  AlertCircle
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import InstallBanner from '@/components/InstallBanner'
 import CustomModal from '@/components/CustomModal'
+
+export const dynamic = 'force-dynamic';
 
 export default function App() {
   // Navegación
@@ -99,6 +101,7 @@ export default function App() {
     setSearchQuery(query)
     if (query.length < 3) return setSearchResults([])
     
+    const supabase = getSupabase()
     const { data } = await supabase
       .from('pacientes')
       .select('*')
@@ -114,6 +117,7 @@ export default function App() {
     setHoraInicioConsulta(new Date().toISOString())
     
     // Tarea: Cargar historial para Evolución
+    const supabase = getSupabase()
     const { data } = await supabase
       .from('consultas')
       .select('*')
@@ -251,6 +255,7 @@ export default function App() {
 
   const finalizarYGuardar = async () => {
     setSaving(true)
+    const supabase = getSupabase()
     try {
       // Upsert Paciente
       const { data: pData, error: pError } = await supabase
@@ -275,24 +280,25 @@ export default function App() {
         examen_fisico: historia.examen_fisico,
         diagnostico: historia.diagnostico,
         recipe: recipe,
-        medico_nombre: medico.nombre, // Tarea 2
-        hora_inicio: horaInicioConsulta, // Tarea 2
-        hora_fin: new Date().toISOString() // Tarea 2
+        medico_nombre: medico.nombre,
+        hora_inicio: horaInicioConsulta,
+        hora_fin: new Date().toISOString()
       })
       
       if (cError) throw cError
 
       setFinalizado(true)
-      fetchJornada() // Actualizar lista de jornada
+      fetchJornada()
       showAlert("¡Consulta Guardada!", "La atención ha sido registrada exitosamente.", "success")
     } catch (err) { 
-        showAlert("Error Guardado", "No pudimos conectar con Supabase. Revisa tu internet.", "error")
+        showAlert("Error Guardado", "Detalle: " + (err.message || "Error Supabase"), "error")
     }
     finally { setSaving(false) }
   }
 
   const fetchJornada = async () => {
     setLoading(true)
+    const supabase = getSupabase()
     try {
       const today = new Date().toISOString().split('T')[0]
       const { data, error } = await supabase
