@@ -21,7 +21,8 @@ import {
   Mic,
   ArrowRight,
   User as UserIcon,
-  Calendar
+  Calendar,
+  Share
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
@@ -41,6 +42,7 @@ export default function App() {
   const [finalizado, setFinalizado] = useState(false)
   const [jornadaConsultas, setJornadaConsultas] = useState([])
   const [horaInicioConsulta, setHoraInicioConsulta] = useState(null)
+  const [observacionesJornada, setObservacionesJornada] = useState('')
 
   // Modales
   const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '' })
@@ -86,6 +88,11 @@ export default function App() {
       }
     }
   }, [])
+
+  const saveMedico = () => {
+    localStorage.setItem('medico_data', JSON.stringify(medico))
+    showAlert("Perfil", "Datos guardados localmente.", "success")
+  }
 
   // Buscador
   const handleSearch = async (query) => {
@@ -304,6 +311,32 @@ export default function App() {
     }
   }
 
+  // Tarea 3: WhatsApp al Paciente
+  const enviarWhatsAppPaciente = () => {
+    const telefonoRaw = paciente.telefono || ''
+    const telefono = telefonoRaw.replace(/\D/g, '') // solo números
+    
+    // Prefijo 58 si no lo tiene (asumiendo Venezuela por defecto)
+    const telFinal = telefono.startsWith('58') ? telefono : `58${telefono}`
+
+    const texto = `Hola *${paciente.nombre}*, aquí tienes tu récipe médico:\n\n` +
+      `📋 *Diagnóstico:* ${recipe.diagnostico_confirmado || 'Evaluado'}\n\n` +
+      `💊 *Medicamentos:*\n` +
+      (recipe.medicamentos || []).map(m =>
+        `• ${m.nombre} - ${m.dosis} - ${m.indicaciones}`
+      ).join('\n') +
+      `\n\n📌 *Indicaciones Generales:* ${recipe.indicaciones}\n` +
+      `📅 *Próxima cita:* ${recipe.proxima_cita || 'Por definir'}\n\n` +
+      `_Atentamente: Dr(a). ${medico.nombre}_\n` +
+      `_Generado desde Voluntariado Médico App_`
+
+    if (!telefono) {
+      showAlert("Sin Teléfono", "Este paciente no tiene un número registrado.", "error")
+      return
+    }
+    window.open(`https://wa.me/${telFinal}?text=${encodeURIComponent(texto)}`, '_blank')
+  }
+
   // Tarea 4: Informe de Jornada
   const generarInformeJornada = () => {
     const doc = new jsPDF()
@@ -325,9 +358,20 @@ export default function App() {
       headStyles: { fillColor: [15, 23, 42] }
     })
     
+    // Agregar observaciones
+    if (observacionesJornada) {
+      doc.setFontSize(12).text("Observaciones Generales:", 20, doc.lastAutoTable.finalY + 10)
+      doc.setFontSize(10).text(observacionesJornada, 20, doc.lastAutoTable.finalY + 18, { maxWidth: 170 })
+    }
+
     doc.save(`Jornada_${now.toISOString().split('T')[0]}.pdf`)
 
     // WhatsApp al Coordinador
+    if (!medico.whatsapp_coordinador) {
+        showAlert("Configuración", "Por favor configura el WhatsApp del coordinador en Perfil.", "info")
+        return
+    }
+
     let total = jornadaConsultas.length
     let msg = `*INFORME DE JORNADA - ${now.toLocaleDateString()}*\n`
     msg += `*Médico:* ${medico.nombre}\n`
@@ -339,9 +383,11 @@ export default function App() {
       msg += `• ${hora} - ${c.pacientes?.nombre} - ${c.diagnostico} ${rec}\n`
     })
 
-    msg += `\nGenerado desde Voluntariado Médico App`
-    const url = `https://wa.me/${medico.whatsapp_coordinador}?text=${encodeURIComponent(msg)}`
-    window.open(url, '_blank')
+    if (observacionesJornada) msg += `\n*Observaciones:* ${observacionesJornada}`
+    msg += `\n\n_Generado desde Voluntariado Médico App_`
+
+    const telCoordinador = medico.whatsapp_coordinador.startsWith('58') ? medico.whatsapp_coordinador : `58${medico.whatsapp_coordinador}`
+    window.open(`https://wa.me/${telCoordinador}?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   useEffect(() => {
@@ -647,10 +693,14 @@ export default function App() {
                    {saving ? <Loader2 className="animate-spin" /> : <Save />} CERRAR Y GUARDAR CONSULTA
                  </button>
                ) : (
-                 <div className="grid grid-cols-2 gap-4">
-                   <button onClick={descargarPDF} className="p-3 bg-slate-800 text-white rounded-xl shadow-md font-bold flex items-center justify-center gap-2"><Download className="w-4 h-4" /> PDF</button>
-                   <button onClick={()=>window.open(`https://wa.me/${paciente.telefono}?text=Hola, tu récipe está listo.`)} className="p-3 bg-green-500 text-white rounded-xl shadow-md font-bold flex items-center justify-center gap-2"><Send className="w-4 h-4" /> WhatsApp</button>
-                   <button onClick={() => window.location.reload()} className="col-span-2 text-medical-600 font-bold underline py-2">Nueva Consulta</button>
+                 <div className="bg-white p-6 rounded-3xl shadow-xl space-y-4 border-2 border-medical-500">
+                   <button onClick={descargarPDF} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2">
+                     <Download className="w-6 h-6" /> DESCARGAR RÉCIPE (PDF)
+                   </button>
+                   <button onClick={enviarWhatsAppPaciente} className="w-full py-4 bg-green-600 text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2">
+                     <Share className="w-6 h-6" /> NOTIFICAR POR WHATSAPP
+                   </button>
+                   <button onClick={() => window.location.reload()} className="w-full text-medical-600 font-bold underline py-2">Nueva Consulta</button>
                  </div>
                )}
             </div>
@@ -693,12 +743,22 @@ export default function App() {
                )}
              </div>
 
+             <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observaciones de la Jornada</label>
+                <textarea 
+                  value={observacionesJornada}
+                  onChange={e=>setObservacionesJornada(e.target.value)}
+                  placeholder="Ej: Jornada exitosa, se requiere reposición de Paracetamol..."
+                  className="w-full p-4 bg-white rounded-2xl border border-slate-200 outline-none h-24 text-sm font-medium"
+                />
+             </div>
+
              {jornadaConsultas.length > 0 && (
                <button 
                  onClick={generarInformeJornada}
                  className="w-full py-5 bg-medical-600 text-white rounded-3xl font-black shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
                >
-                 <Download className="w-6 h-6" /> GENERAR INFORME DEL DÍA
+                 <Send className="w-6 h-6" /> GENERAR E INFORMAR JORNADA
                </button>
              )}
           </div>
