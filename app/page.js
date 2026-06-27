@@ -238,19 +238,80 @@ export default function App() {
     finally { setSaving(false) }
   }
 
-  // PDF
+  // PDF Profesional (Tamaño Carta)
   const descargarPDF = () => {
-    const doc = new jsPDF()
-    doc.setFontSize(10).text(`${medico.nombre}\n${medico.especialidad}\nDoc: ${medico.registro}`, 195, 20, { align: 'right' })
-    doc.setFontSize(22).text("RÉCIPE MÉDICO", 105, 50, { align: 'center' })
-    doc.setFontSize(11).text(`Paciente: ${paciente.nombre}\nCédula: ${paciente.cedula}\nFecha: ${new Date().toLocaleDateString()}`, 20, 70)
+    const doc = new jsPDF({
+      orientation: 'p',
+      unit: 'mm',
+      format: 'letter'
+    })
+
+    // Header con diseño
+    doc.setFillColor(14, 165, 233)
+    doc.rect(0, 0, 216, 40, 'F')
+    
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(24)
+    doc.setFont('helvetica', 'bold')
+    doc.text("CONSULTA MÉDICA", 20, 25)
+    
+    doc.setFontSize(10)
+    doc.text(`${medico.nombre}\n${medico.especialidad}\nReg: ${medico.registro}`, 190, 15, { align: 'right' })
+
+    // Cuerpo
+    doc.setTextColor(30, 41, 59)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text("DATOS DEL PACIENTE", 20, 55)
+    doc.line(20, 57, 196, 57)
+    
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11)
+    doc.text(`Nombre: ${paciente.nombre}`, 20, 65)
+    doc.text(`Cédula: ${paciente.cedula}`, 20, 72)
+    doc.text(`Edad: ${paciente.edad} años`, 100, 65)
+    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 100, 72)
+    
+    doc.setFont('helvetica', 'bold')
+    doc.text("HISTORIA Y EVALUACIÓN", 20, 85)
+    doc.line(20, 87, 196, 87)
+    doc.setFont('helvetica', 'normal')
+    doc.text("Anamnesis:", 20, 95)
+    doc.setFontSize(10)
+    doc.text(doc.splitTextToSize(historia.anamnesis || "No registrada", 176), 20, 100)
+    
+    doc.setFontSize(11)
+    doc.text("Diagnóstico:", 20, 130)
+    doc.setFont('helvetica', 'bold')
+    doc.text(recipe.diagnostico_confirmado || historia.diagnostico, 20, 135)
+    
+    doc.setFontSize(12)
+    doc.text("PLAN Y TRATAMIENTO", 20, 155)
+    doc.line(20, 157, 196, 157)
+    
     doc.autoTable({
-      startY: 90,
+      startY: 165,
+      margin: { left: 20, right: 20 },
       head: [["Medicamento", "Dosis", "Frecuencia", "Duración"]],
       body: recipe.medicamentos.map(m => [m.nombre, m.dosis, m.frecuencia, m.duracion]),
-      headStyles: { fillColor: [14, 165, 233] }
+      headStyles: { fillColor: [14, 165, 233] },
+      styles: { fontSize: 10 }
     })
-    doc.text(`Indicaciones: ${recipe.indicaciones}`, 20, doc.lastAutoTable.finalY + 15)
+    
+    let finalY = doc.lastAutoTable.finalY || 165
+    doc.setFont('helvetica', 'bold')
+    doc.text("Indicaciones:", 20, finalY + 15)
+    doc.setFont('helvetica', 'normal')
+    doc.text(doc.splitTextToSize(recipe.indicaciones, 176), 20, finalY + 20)
+    
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Próxima Cita: ${recipe.proxima_cita || 'Por definir'}`, 20, 250)
+    
+    // Firma placeholder
+    doc.line(70, 265, 146, 265)
+    doc.setFontSize(8)
+    doc.text("Firma y Sello del Médico", 108, 270, { align: 'center' })
+
     doc.save(`Recipe_${paciente.cedula}.pdf`)
   }
 
@@ -321,12 +382,12 @@ export default function App() {
                    <UserPlus className="w-24 h-24" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2">Asistente DocBot</h2>
-                  <p className="text-xs text-medical-800 font-medium">Díctale los datos al asistente.</p>
+                  <h2 className="text-xl font-bold flex items-center gap-2 text-slate-900">DocBot Registro</h2>
+                  <p className="text-xs text-slate-700 font-bold">Díctale los datos del paciente.</p>
                 </div>
                 <button 
                   onClick={togglePatientMic}
-                  className={`p-4 rounded-2xl shadow-lg transition-all ${patientMicActive ? 'bg-red-500 animate-pulse text-white' : 'bg-white text-medical-600'}`}
+                  className={`p-4 rounded-2xl shadow-lg transition-all ${patientMicActive ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-900 text-white'}`}
                 >
                   <Mic className={patientMicActive ? 'animate-bounce' : ''} />
                 </button>
@@ -379,16 +440,15 @@ export default function App() {
         {activeTab === 'clinic' && (
           <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-20">
             <div className="bg-medical-900 text-white p-6 rounded-3xl shadow-2xl relative overflow-hidden">
-               <div className="absolute right-0 top-0 w-32 h-32 bg-medical-500/10 rounded-full -mr-16 -mt-16"></div>
-               <h2 className="text-xl font-bold mb-1 relative z-10">DocBot Clínico</h2>
-               <p className="text-xs text-medical-200 relative z-10 font-bold tracking-tight">Presiona y describe el caso clínico.</p>
+               <h2 className="text-xl font-bold mb-1 relative z-10 text-white">DocBot Clínico</h2>
+               <p className="text-xs text-slate-900 relative z-10 font-bold bg-white/80 px-2 py-1 rounded inline-block">Habla ahora: Describe el caso médico</p>
                
                <button 
                   onClick={toggleGlobalMic}
-                  className={`mt-6 w-full py-6 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all shadow-xl ${globalMicActive ? 'bg-red-500 animate-pulse text-white' : 'bg-white text-medical-900 hover:bg-medical-50'}`}
+                  className={`mt-6 w-full py-6 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all shadow-xl ${globalMicActive ? 'bg-red-600 animate-pulse text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                >
-                 {globalMicActive ? <Loader2 className="animate-spin w-8 h-8" /> : <Mic className="w-8 h-8" />}
-                 <span className="font-black text-sm">{globalMicActive ? 'OYENDO AL MÉDICO...' : 'DICTAR HISTORIA'}</span>
+                 {globalMicActive ? <Loader2 className="animate-spin w-8 h-8" /> : <Mic className="w-8 h-8 font-bold" />}
+                 <span className="font-black text-sm">{globalMicActive ? 'ESCUCHANDO...' : 'DICTAR HISTORIA'}</span>
                </button>
             </div>
 
@@ -403,13 +463,13 @@ export default function App() {
                  <label className="text-[10px] font-black text-slate-400 uppercase">Examen Físico</label>
                  <textarea value={historia.examen_fisico} onChange={e=>setHistoria({...historia, examen_fisico:e.target.value})} className="w-full p-3 h-24 bg-slate-50 rounded-xl outline-none text-sm" />
                </div>
-               <div className="p-4 bg-medical-50 rounded-2xl border border-medical-100">
-                 <label className="text-[10px] font-black text-medical-600 uppercase">Diagnóstico Presuntivo</label>
-                 <textarea value={historia.diagnostico} onChange={e=>setHistoria({...historia, diagnostico:e.target.value})} className="w-full bg-transparent p-0 h-16 outline-none font-bold text-medical-900" />
-               </div>
-               <button onClick={generarRecipeIA} disabled={aiLoading} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg">
-                 Generar Récipe con IA <ArrowRight className="w-5 h-5"/>
-               </button>
+                <div className="p-4 bg-medical-50 rounded-2xl border border-medical-100">
+                  <label className="text-[10px] font-black text-medical-600 uppercase">Diagnóstico Presuntivo</label>
+                  <textarea value={historia.diagnostico} onChange={e=>setHistoria({...historia, diagnostico:e.target.value})} className="w-full bg-transparent p-0 h-16 outline-none font-bold text-slate-800" />
+                </div>
+                <button onClick={generarRecipeIA} disabled={aiLoading} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg">
+                  Generar Récipe con IA <ArrowRight className="w-5 h-5"/>
+                </button>
             </div>
           </div>
         )}
@@ -482,26 +542,26 @@ export default function App() {
       </main>
 
       {/* Navegación Inferior (Estilo Móvil Premium) */}
-      <nav className="bg-white border-t p-3 flex justify-around items-center space-x-2 sticky bottom-0 z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-        <button onClick={() => setActiveTab('search')} className={`flex flex-col items-center flex-1 p-2 rounded-xl transition-all ${activeTab === 'search' ? 'text-medical-600 bg-medical-50' : 'text-slate-400 hover:text-slate-600'}`}>
+      <nav className="bg-white border-t p-2 flex justify-between items-center w-full sticky bottom-0 z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] overflow-x-auto no-scrollbar">
+        <button onClick={() => setActiveTab('search')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'search' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
           <Search className="w-5 h-5 mb-1" />
-          <span className="text-[9px] font-bold uppercase tracking-tight">Buscar</span>
+          <span className="text-[10px] font-bold">BUSCAR</span>
         </button>
-        <button onClick={() => setActiveTab('patient')} className={`flex flex-col items-center flex-1 p-2 rounded-xl transition-all ${activeTab === 'patient' ? 'text-medical-600 bg-medical-50' : 'text-slate-400 hover:text-slate-600'}`}>
+        <button onClick={() => setActiveTab('patient')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'patient' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
           <UserIcon className="w-5 h-5 mb-1" />
-          <span className="text-[9px] font-bold uppercase tracking-tight">Paciente</span>
+          <span className="text-[10px] font-bold">PACIENTE</span>
         </button>
-        <button onClick={() => setActiveTab('clinic')} className={`flex flex-col items-center flex-1 p-2 rounded-xl transition-all ${activeTab === 'clinic' ? 'text-medical-600 bg-medical-50' : 'text-slate-400 hover:text-slate-600'}`}>
+        <button onClick={() => setActiveTab('clinic')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'clinic' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
           <Stethoscope className="w-5 h-5 mb-1" />
-          <span className="text-[9px] font-bold uppercase tracking-tight">Consulta</span>
+          <span className="text-[10px] font-bold">CONSULTA</span>
         </button>
-        <button onClick={() => setActiveTab('recipe')} className={`flex flex-col items-center flex-1 p-2 rounded-xl transition-all ${activeTab === 'recipe' ? 'text-medical-600 bg-medical-50' : 'text-slate-400 hover:text-slate-600'}`}>
+        <button onClick={() => setActiveTab('recipe')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'recipe' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
           <ClipboardCheck className="w-5 h-5 mb-1" />
-          <span className="text-[9px] font-bold uppercase tracking-tight">Récipe</span>
+          <span className="text-[10px] font-bold">RÉCIPE</span>
         </button>
-        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center flex-1 p-2 rounded-xl transition-all ${activeTab === 'profile' ? 'text-medical-600 bg-medical-50' : 'text-slate-400 hover:text-slate-600'}`}>
+        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center min-w-[64px] p-2 rounded-xl transition-all ${activeTab === 'profile' ? 'text-medical-600 bg-medical-50' : 'text-slate-500'}`}>
           <UserCircle className="w-5 h-5 mb-1" />
-          <span className="text-[9px] font-bold uppercase tracking-tight">Perfil</span>
+          <span className="text-[10px] font-bold">PERFIL</span>
         </button>
       </nav>
 
