@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase'
 import { iniciarSesionMedico, getMedico } from '@/lib/session'
 import { UserCircle, ShieldCheck, UserPlus, Stethoscope, Loader2, ArrowRight } from 'lucide-react'
+import InstallBanner from '@/components/InstallBanner'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -249,6 +250,7 @@ export default function LoginPage() {
         </p>
 
       </div>
+      <InstallBanner />
     </div>
   )
 }
