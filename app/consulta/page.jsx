@@ -365,8 +365,59 @@ export default function FichaClinicaPage() {
 
   // --- ENVIAR WHATSAPP ---
   const enviarWhatsApp = () => {
-    const texto = `*Ficha de Atención Médica Voluntaria*\n\n*Paciente:* ${pacienteData.nombre}\n*Diagnóstico:* ${recipe.diagnostico_confirmado || diagnosticoPlan.diagnosticoPresuntivo}\n\n*Medicamentos:*\n${recipe.medicamentos.map(m => `- ${m.nombre} (${m.dosis}) cada ${m.frecuencia} por ${m.duracion}`).join('\n')}\n\n*Indicaciones:* ${recipe.indicaciones}\n\n*Próxima Cita:* ${recipe.proxima_cita || 'N/A'}`
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank')
+    const texto =
+      `Hola ${pacienteData.nombre}, le saluda el equipo de *Voluntariado Médico*.\n\n` +
+      `A continuación le enviamos el resumen completo de su consulta médica de hoy:\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `📋 *HISTORIA CLÍNICA*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `👤 Paciente: ${pacienteData.nombre}, ${pacienteData.edad} años, ${pacienteData.sexo}\n` +
+      `📍 Ubicación: ${pacienteData.ubicacion || 'No especificada'}\n` +
+      `📞 Canal de atención: ${canalContacto}\n` +
+      `📅 Fecha: ${new Date().toLocaleDateString('es-VE')}\n` +
+      `👨‍⚕️ Médico: Dr(a). ${medico.nombre} ${medico.apellido || ''} — ${medico.especialidad || 'General'}\n\n` +
+      `🔍 *MOTIVO DE CONSULTA*\n${pacienteData.motivo}\n\n` +
+      (pacienteData.inicioSintomas ? `⏱ Inicio de síntomas: ${new Date(pacienteData.inicioSintomas).toLocaleString('es-VE')}\n` : '') +
+      (pacienteData.caracteristicasSintoma ? `📝 Características: ${pacienteData.caracteristicasSintoma}\n` : '') +
+      (pacienteData.antecedentes ? `\n🏥 *ANTECEDENTES*\n${pacienteData.antecedentes}\n` : '') +
+      (pacienteData.alergias ? `⚠️ Alergias: ${pacienteData.alergias}\n` : '') +
+      (pacienteData.medicamentosHabituales ? `💊 Medicamentos habituales: ${pacienteData.medicamentosHabituales}\n` : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `🩺 *EXAMEN FÍSICO*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      (examenFisico.estadoGeneral ? `Estado general: ${examenFisico.estadoGeneral}\n` : '') +
+      (examenFisico.glasgow ? `Glasgow: ${examenFisico.glasgow}\n` : '') +
+      (examenFisico.coloracionPiel?.length ? `Coloración: ${examenFisico.coloracionPiel.join(', ')}\n` : '') +
+      ((examenFisico.fc || examenFisico.fr || examenFisico.pa || examenFisico.temperatura || examenFisico.sato2) ?
+        `\n📊 *Signos Vitales*\n` +
+        (examenFisico.fc ? `FC: ${examenFisico.fc} lpm\n` : '') +
+        (examenFisico.fr ? `FR: ${examenFisico.fr} rpm\n` : '') +
+        (examenFisico.pa ? `PA: ${examenFisico.pa} mmHg\n` : '') +
+        (examenFisico.temperatura ? `Temp: ${examenFisico.temperatura}°C\n` : '') +
+        (examenFisico.sato2 ? `SatO2: ${examenFisico.sato2}%\n` : '')
+      : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `🔬 *DIAGNÓSTICO Y PLAN*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `Diagnóstico: ${recipe.diagnostico_confirmado || diagnosticoPlan.diagnosticoPresuntivo}\n` +
+      `Gravedad: ${diagnosticoPlan.nivelGravedad}\n` +
+      (diagnosticoPlan.planAccion ? `Plan: ${diagnosticoPlan.planAccion}\n` : '') +
+      (diagnosticoPlan.criterioDerivacion ? `⚠️ Se recomienda acudir a un centro hospitalario.\n` : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `💊 *RÉCIPE MÉDICO*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      (recipe.medicamentos?.length > 0
+        ? recipe.medicamentos.map(m => `• ${m.nombre} ${m.dosis} — ${m.frecuencia} por ${m.duracion}`).join('\n')
+        : 'Sin medicamentos indicados') +
+      `\n\n📌 *Indicaciones:*\n${recipe.indicaciones || 'Ver con su médico'}\n` +
+      (recipe.proxima_cita ? `\n🗓 *Próxima cita:* ${recipe.proxima_cita}\n` : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `_Este resumen fue generado por el sistema de Voluntariado Médico de Atención en Emergencias._\n` +
+      `_Guarde este mensaje como respaldo de su consulta._`
+
+    const tel = (pacienteData.telefono || '').replace(/\D/g, '')
+    const numero = tel.startsWith('58') ? tel : `58${tel}`
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank')
   }
 
   // Ayudantes de UI

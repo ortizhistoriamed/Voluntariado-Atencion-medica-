@@ -420,15 +420,54 @@ export default function App() {
     ).join('\n')
 
     const texto =
-      `🏥 *RÉCIPE MÉDICO*\n` +
-      `👤 *Paciente:* ${paciente.nombre}\n` +
-      `👨‍⚕️ *Médico:* Dr(a). ${medicoActivo?.nombre} ${medicoActivo?.apellido}\n` +
-      `🎓 *Especialidad:* ${medicoActivo?.especialidad || 'General'}\n` +
-      `📅 *Fecha:* ${new Date().toLocaleDateString('es-VE')}\n\n` +
-      `💊 *Medicamentos:*\n${meds}\n\n` +
-      `📌 *Indicaciones:* ${recipe.indicaciones}\n` +
-      (recipe.proxima_cita ? `🗓 *Próxima cita:* ${recipe.proxima_cita}\n` : '') +
-      `\n_Voluntariado Médico_`
+      `Hola ${paciente.nombre}, le saluda el equipo de *Voluntariado Médico*.\n\n` +
+      `A continuación le enviamos el resumen completo de su consulta médica de hoy:\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `📋 *HISTORIA CLÍNICA*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `👤 Paciente: ${paciente.nombre}, ${paciente.edad} años, ${paciente.sexo}\n` +
+      `📍 Ubicación: ${paciente.ubicacion || 'No especificada'}\n` +
+      `📞 Canal de atención: ${paciente.pref_contacto}\n` +
+      `📅 Fecha: ${new Date().toLocaleDateString('es-VE')}\n` +
+      `👨‍⚕️ Médico: Dr(a). ${medicoActivo?.nombre} ${medicoActivo?.apellido} — ${medicoActivo?.especialidad || 'General'}\n\n` +
+      `🔍 *MOTIVO DE CONSULTA*\n${paciente.motivo_consulta}\n\n` +
+      (paciente.inicio_sintomas ? `⏱ Inicio de síntomas: ${new Date(paciente.inicio_sintomas).toLocaleString('es-VE')}\n` : '') +
+      (paciente.caracteristicas_sintoma ? `📝 Características: ${paciente.caracteristicas_sintoma}\n` : '') +
+      (paciente.antecedentes ? `\n🏥 *ANTECEDENTES*\n${paciente.antecedentes}\n` : '') +
+      (paciente.alergias ? `⚠️ Alergias: ${paciente.alergias}\n` : '') +
+      (paciente.medicamentos_habituales ? `💊 Medicamentos habituales: ${paciente.medicamentos_habituales}\n` : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `🩺 *EXAMEN FÍSICO*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      (historia.estado_general ? `Estado general: ${historia.estado_general}\n` : '') +
+      (historia.glasgow ? `Glasgow: ${historia.glasgow}\n` : '') +
+      (historia.coloracion_piel?.length ? `Coloración: ${historia.coloracion_piel.join(', ')}\n` : '') +
+      ((historia.fc || historia.fr || historia.pa || historia.temperatura || historia.sato2) ?
+        `\n📊 *Signos Vitales*\n` +
+        (historia.fc ? `FC: ${historia.fc} lpm\n` : '') +
+        (historia.fr ? `FR: ${historia.fr} rpm\n` : '') +
+        (historia.pa ? `PA: ${historia.pa} mmHg\n` : '') +
+        (historia.temperatura ? `Temp: ${historia.temperatura}°C\n` : '') +
+        (historia.sato2 ? `SatO2: ${historia.sato2}%\n` : '')
+      : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `🔬 *DIAGNÓSTICO Y PLAN*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `Diagnóstico: ${recipe.diagnostico_confirmado || historia.diagnostico}\n` +
+      `Gravedad: ${historia.nivel_gravedad}\n` +
+      (historia.plan_accion ? `Plan: ${historia.plan_accion}\n` : '') +
+      (historia.criterio_derivacion ? `⚠️ Se recomienda acudir a un centro hospitalario.\n` : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `💊 *RÉCIPE MÉDICO*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      (recipe.medicamentos?.length > 0
+        ? recipe.medicamentos.map(m => `• ${m.nombre} ${m.dosis} — ${m.frecuencia || ''} ${m.duracion || ''}`).join('\n')
+        : 'Sin medicamentos indicados') +
+      `\n\n📌 *Indicaciones:*\n${recipe.indicaciones || 'Ver con su médico'}\n` +
+      (recipe.proxima_cita ? `\n🗓 *Próxima cita:* ${recipe.proxima_cita}\n` : '') +
+      `\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `_Este resumen fue generado por el sistema de Voluntariado Médico de Atención en Emergencias._\n` +
+      `_Guarde este mensaje como respaldo de su consulta._`
 
     if (!telefono) {
       showAlert("Sin Teléfono", "Este paciente no tiene un número registrado.", "error")
@@ -1433,9 +1472,14 @@ export default function App() {
           <span className="text-[9px] font-black uppercase tracking-tighter">Récipe</span>
         </button>
 
-        <button onClick={() => setActiveTab('jornada')} className={`flex flex-col items-center min-w-[60px] p-2 rounded-xl transition-all relative ${activeTab === 'jornada' ? 'text-slate-500 scale-110' : 'text-slate-300 opacity-50'}`}>
+        <button onClick={() => router.push('/jornada')} className={`flex flex-col items-center min-w-[60px] p-2 rounded-xl transition-all relative text-slate-400 opacity-50`}>
           <Calendar className="w-5 h-5 mb-1" />
           <span className="text-[8px] font-black uppercase">Jornada</span>
+        </button>
+
+        <button onClick={() => router.push('/perfil')} className={`flex flex-col items-center min-w-[60px] p-2 rounded-xl transition-all relative text-slate-400 opacity-50`}>
+          <UserCircle className="w-5 h-5 mb-1" />
+          <span className="text-[8px] font-black uppercase">Perfil</span>
         </button>
       </nav>
 
