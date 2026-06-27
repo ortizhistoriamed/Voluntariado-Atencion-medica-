@@ -66,6 +66,7 @@ export default function App() {
   })
   const [historia, setHistoria] = useState({ anamnesis: '', examen_fisico: '', diagnostico: '', notas: '' })
   const [recipe, setRecipe] = useState({ diagnostico_confirmado: '', medicamentos: [], indicaciones: '', proxima_cita: '' })
+  const [historialPaciente, setHistorialPaciente] = useState([]) // Nuevo para Evolución
 
   // Mic y Voz
   const [globalMicActive, setGlobalMicActive] = useState(false)
@@ -100,10 +101,19 @@ export default function App() {
     setSearchResults(data || [])
   }
 
-  const selectPatient = (p) => {
-    setPaciente({ ...p, id: p.id, medicamentos_previos: p.medicamentos || '' })
+  const selectPatient = async (p) => {
+    setPaciente({ ...p, id: p.id })
     setSearchResults([])
-    setHoraInicioConsulta(new Date().toISOString()) // Tarea 2: Inicia timer consulta
+    setHoraInicioConsulta(new Date().toISOString())
+    
+    // Tarea: Cargar historial para Evolución
+    const { data } = await supabase
+      .from('consultas')
+      .select('*')
+      .eq('paciente_id', p.id)
+      .order('hora_inicio', { ascending: false })
+    setHistorialPaciente(data || [])
+    
     setActiveTab('patient')
   }
 
@@ -145,6 +155,24 @@ export default function App() {
       }
       recognitionRef.current.start()
       setPatientMicActive(true)
+    }
+  }
+
+  const toggleFieldMic = (field, setter, state) => {
+    if (recognitionRef.current && !globalMicActive && !patientMicActive) {
+      let fullTranscript = ''
+      recognitionRef.current.onresult = (e) => {
+        for (let i = e.resultIndex; i < e.results.length; ++i) {
+          if (e.results[i].isFinal) fullTranscript += e.results[i][0].transcript
+        }
+      }
+      recognitionRef.current.onend = () => {
+        if (fullTranscript.trim()) {
+           setter({ ...state, [field]: (state[field] + ' ' + fullTranscript).trim() })
+        }
+      }
+      recognitionRef.current.start()
+      showAlert("Dictando...", `Agregando texto a ${field}...`, "info")
     }
   }
 
@@ -535,21 +563,45 @@ export default function App() {
 
             <div className="bg-white p-6 rounded-3xl shadow-xl space-y-4 border border-slate-100">
                <div>
-                 <label className="text-[10px] font-black text-slate-400 uppercase">Anamnesis</label>
-                 <textarea value={historia.anamnesis} onChange={e=>setHistoria({...historia, anamnesis:e.target.value})} className="w-full p-3 h-32 bg-slate-50 rounded-xl outline-none text-sm" />
+                 <div className="flex justify-between items-center mb-1">
+                   <label className="text-[10px] font-black text-slate-400 uppercase">Anamnesis</label>
+                   <button onClick={() => toggleFieldMic('anamnesis', setHistoria, historia)} className="p-1 text-medical-600"><Mic className="w-4 h-4"/></button>
+                 </div>
+                 <textarea value={historia.anamnesis} onChange={e=>setHistoria({...historia, anamnesis:e.target.value})} className="w-full p-3 h-32 bg-slate-50 rounded-xl outline-none text-sm text-slate-900 font-medium" />
                </div>
                <div>
-                 <label className="text-[10px] font-black text-slate-400 uppercase">Examen Físico</label>
-                 <textarea value={historia.examen_fisico} onChange={e=>setHistoria({...historia, examen_fisico:e.target.value})} className="w-full p-3 h-24 bg-slate-50 rounded-xl outline-none text-sm" />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Examen Físico</label>
+                    <button onClick={() => toggleFieldMic('examen_fisico', setHistoria, historia)} className="p-1 text-medical-600"><Mic className="w-4 h-4"/></button>
+                  </div>
+                 <textarea value={historia.examen_fisico} onChange={e=>setHistoria({...historia, examen_fisico:e.target.value})} className="w-full p-3 h-24 bg-slate-50 rounded-xl outline-none text-sm text-slate-900 font-medium" />
                </div>
-                <div className="p-4 bg-medical-50 rounded-2xl border border-medical-100">
-                  <label className="text-[10px] font-black text-medical-600 uppercase">Diagnóstico Presuntivo</label>
+               <div className="p-4 bg-medical-50 rounded-2xl border border-medical-100">
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] font-black text-medical-600 uppercase">Diagnóstico Presuntivo</label>
+                    <button onClick={() => toggleFieldMic('diagnostico', setHistoria, historia)} className="p-1 text-medical-600"><Mic className="w-4 h-4"/></button>
+                  </div>
                   <textarea value={historia.diagnostico} onChange={e=>setHistoria({...historia, diagnostico:e.target.value})} className="w-full bg-transparent p-0 h-16 outline-none font-bold text-slate-800" />
-                </div>
-                <button onClick={generarRecipeIA} disabled={aiLoading} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg">
+               </div>
+               <button onClick={generarRecipeIA} disabled={aiLoading} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg">
                   Generar Récipe con IA <ArrowRight className="w-5 h-5"/>
-                </button>
+               </button>
             </div>
+
+            {/* EVOLUCIÓN (Historial Previo) */}
+            {historialPaciente.length > 0 && (
+              <div className="bg-slate-50 p-6 rounded-3xl border border-dashed border-slate-200">
+                <h3 className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Evolución / Pasado</h3>
+                <div className="space-y-4">
+                  {historialPaciente.map((h, i) => (
+                    <div key={i} className="text-xs space-y-1 bg-white p-3 rounded-xl shadow-sm">
+                      <p className="font-bold text-slate-400">{new Date(h.hora_inicio).toLocaleDateString()}</p>
+                      <p className="text-slate-700"><span className="font-bold">Diag:</span> {h.diagnostico}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -680,12 +732,17 @@ export default function App() {
                  <button 
                    onClick={async () => {
                      setLoading(true)
-                     const { data, error } = await supabase.from('pacientes').select('count', { count: 'exact', head: true })
-                     setLoading(false)
-                     if (error) showAlert("Error DB", "Fallo de conexión: " + error.message, "error")
-                     else showAlert("Conexión OK", "Supabase responde correctamente. Pacientes en DB: " + data?.count, "success")
+                     try {
+                        const { data, error } = await supabase.from('pacientes').select('count', { count: 'exact', head: true })
+                        if (error) showAlert("Error DB", "Fallo de conexión: " + error.message, "error")
+                        else showAlert("Conexión OK", "Supabase responde correctamente. Pacientes en DB: " + (data?.[0]?.count || 0), "success")
+                     } catch (e) {
+                        showAlert("Crash", e.message, "error")
+                     } finally {
+                        setLoading(false)
+                     }
                    }}
-                   className="w-full py-3 bg-white text-slate-500 border-2 border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-tighter"
+                   className="w-full py-4 bg-slate-800 text-white border-2 border-white/20 rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-xl"
                  >
                    {loading ? 'Verificando...' : 'Probar conexión con Base de Datos'}
                  </button>
