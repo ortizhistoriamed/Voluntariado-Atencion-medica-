@@ -675,6 +675,21 @@ export default function App() {
                  <p className="text-[9px] text-medical-400 mt-1">* Código de país sin el símbolo +</p>
                </div>
                <button onClick={saveMedico} className="w-full py-5 bg-slate-900 text-white rounded-3xl font-black shadow-xl hover:bg-slate-800 transition-all active:scale-95 uppercase tracking-widest">Guardar Perfil</button>
+               
+               <div className="pt-6 border-t mt-6">
+                 <button 
+                   onClick={async () => {
+                     setLoading(true)
+                     const { data, error } = await supabase.from('pacientes').select('count', { count: 'exact', head: true })
+                     setLoading(false)
+                     if (error) showAlert("Error DB", "Fallo de conexión: " + error.message, "error")
+                     else showAlert("Conexión OK", "Supabase responde correctamente. Pacientes en DB: " + data?.count, "success")
+                   }}
+                   className="w-full py-3 bg-white text-slate-500 border-2 border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-tighter"
+                 >
+                   {loading ? 'Verificando...' : 'Probar conexión con Base de Datos'}
+                 </button>
+               </div>
             </div>
           </div>
         )}

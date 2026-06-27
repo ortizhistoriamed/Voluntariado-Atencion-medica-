@@ -22,12 +22,12 @@ export default function CustomModal({ isOpen, onClose, type = 'info', title, mes
       <div className={`relative bg-white w-full max-w-xs p-8 rounded-[40px] shadow-2xl border-2 ${colors[type]} animate-in zoom-in-95 duration-300 text-center space-y-4`}>
         <div className="flex justify-center">{icons[type]}</div>
         <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">{title}</h3>
-        <p className="text-sm text-slate-500 font-medium leading-relaxed">{message}</p>
+        <p className="text-sm text-slate-600 font-bold leading-relaxed">{message}</p>
         <button 
           onClick={onClose}
-          className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95"
+          className="w-full py-5 bg-black text-white rounded-2xl font-black text-lg hover:bg-slate-800 transition-all active:scale-95 shadow-xl border-2 border-white/20"
         >
-          ENTENDIDO
+          {type === 'error' ? 'REINTENTAR' : 'ENTENDIDO'}
         </button>
       </div>
     </div>
