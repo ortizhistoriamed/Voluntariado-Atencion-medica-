@@ -38,6 +38,7 @@ export const dynamic = 'force-dynamic';
 export default function App() {
   const router = useRouter()
   const [medicoActivo, setMedicoActivo] = useState(null)
+  const [loadingSession, setLoadingSession] = useState(true)
   const [mostrarBienvenida, setMostrarBienvenida] = useState(false)
   
   const [activeTab, setActiveTab] = useState('search') // search, patient, clinic, recipe, settings
@@ -126,6 +127,7 @@ export default function App() {
       setMedicoActivo(med)
       setMostrarBienvenida(true)
       setTimeout(() => setMostrarBienvenida(false), 2500)
+      setLoadingSession(false)
     }
 
     if (typeof window !== 'undefined') {
@@ -574,6 +576,19 @@ export default function App() {
     doc.save(`Recipe_${paciente.cedula}.pdf`)
   }
 
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-medical-50 p-6 rounded-[40px] animate-pulse mb-4">
+          <Stethoscope className="w-12 h-12 text-medical-600" />
+        </div>
+        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tighter mb-1">Cargando Sistema...</h2>
+        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Verificando sesión médica</p>
+        <Loader2 className="w-6 h-6 text-medical-600 animate-spin mt-6" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       
@@ -750,7 +765,7 @@ export default function App() {
               
               {expandedSection === 1 && (
                 <div className="p-6 space-y-7">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sexo Biológico</label>
                       <select value={paciente.sexo} onChange={e=>setPaciente({...paciente, sexo:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-medical-300 font-bold text-slate-700">
@@ -759,10 +774,6 @@ export default function App() {
                         <option>Femenino</option>
                         <option>Otro</option>
                       </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Teléfono / WhatsApp</label>
-                      <input type="tel" value={paciente.telefono} onChange={e=>setPaciente({...paciente, telefono:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-medical-300 font-bold" placeholder="04XX-XXXXXXX" />
                     </div>
                   </div>
 
