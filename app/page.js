@@ -100,16 +100,15 @@ export default function App() {
   }
 
   // AI Voice Assistant (Estructurador)
-  const toggleGlobalMic = () => {
-    if (globalMicActive) {
-      recognitionRef.current.stop()
-      setGlobalMicActive(false)
     } else {
       let fullTranscript = ''
       recognitionRef.current.onresult = (e) => {
-        fullTranscript += ' ' + e.results[e.results.length - 1][0].transcript
+        for (let i = e.resultIndex; i < e.results.length; ++i) {
+          if (e.results[i].isFinal) fullTranscript += e.results[i][0].transcript
+        }
       }
       recognitionRef.current.onend = async () => {
+        setGlobalMicActive(false)
         if (fullTranscript.trim()) structureWithAI(fullTranscript)
       }
       recognitionRef.current.start()
@@ -124,9 +123,12 @@ export default function App() {
     } else {
       let fullTranscript = ''
       recognitionRef.current.onresult = (e) => {
-        fullTranscript += ' ' + e.results[e.results.length - 1][0].transcript
+        for (let i = e.resultIndex; i < e.results.length; ++i) {
+          if (e.results[i].isFinal) fullTranscript += e.results[i][0].transcript
+        }
       }
       recognitionRef.current.onend = async () => {
+        setPatientMicActive(false)
         if (fullTranscript.trim()) extractPatientDataWithAI(fullTranscript)
       }
       recognitionRef.current.start()
@@ -377,24 +379,21 @@ export default function App() {
         {/* PANTALLA: DATOS PACIENTE */}
         {activeTab === 'patient' && (
           <div className="space-y-6">
-            <div className="bg-medical-600 text-white p-6 rounded-3xl shadow-xl flex items-center justify-between relative overflow-hidden">
-                <div className="absolute -right-4 -bottom-4 opacity-10">
-                   <UserPlus className="w-24 h-24" />
-                </div>
+            <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl flex items-center justify-between relative overflow-hidden">
                 <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2 text-slate-900">DocBot Registro</h2>
-                  <p className="text-xs text-slate-700 font-bold">Díctale los datos del paciente.</p>
+                  <h2 className="text-xl font-bold flex items-center gap-2 text-white">Asistente DocBot</h2>
+                  <p className="text-xs text-slate-300 font-bold uppercase tracking-widest">Presiona el micro y dicta los datos</p>
                 </div>
                 <button 
                   onClick={togglePatientMic}
-                  className={`p-4 rounded-2xl shadow-lg transition-all ${patientMicActive ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-900 text-white'}`}
+                  className={`p-4 rounded-2xl shadow-lg transition-all ${patientMicActive ? 'bg-red-600 animate-pulse' : 'bg-black hover:bg-slate-800'}`}
                 >
-                  <Mic className={patientMicActive ? 'animate-bounce' : ''} />
+                  <Mic className={`w-8 h-8 text-white ${patientMicActive ? 'animate-bounce' : ''}`} />
                 </button>
             </div>
 
-            <div className="bg-white p-8 rounded-3xl shadow-xl space-y-6 border border-slate-100 animate-in slide-in-from-bottom-5">
-              {aiLoading && <div className="flex items-center justify-center gap-2 text-medical-600 font-bold text-sm bg-medical-50 p-3 rounded-xl"><Loader2 className="animate-spin" /> DocBot procesando...</div>}
+            <div className="bg-white p-8 rounded-3xl shadow-xl space-y-6 border border-black animate-in slide-in-from-bottom-5">
+              {aiLoading && <div className="flex items-center justify-center gap-2 text-black font-bold text-sm bg-slate-100 p-3 rounded-xl"><Loader2 className="animate-spin" /> DocBot procesando...</div>}
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-1">
@@ -439,16 +438,16 @@ export default function App() {
         {/* PANTALLA: CLINICA (GROQ ASSISTANT) */}
         {activeTab === 'clinic' && (
           <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-20">
-            <div className="bg-medical-900 text-white p-6 rounded-3xl shadow-2xl relative overflow-hidden">
-               <h2 className="text-xl font-bold mb-1 relative z-10 text-white">DocBot Clínico</h2>
-               <p className="text-xs text-slate-900 relative z-10 font-bold bg-white/80 px-2 py-1 rounded inline-block">Habla ahora: Describe el caso médico</p>
+            <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+               <h2 className="text-2xl font-black mb-1 relative z-10 text-white uppercase tracking-tighter">DocBot Clínico</h2>
+               <p className="text-xs text-slate-300 relative z-10 font-bold uppercase tracking-widest mb-6">Evaluación por Voz Activa</p>
                
                <button 
                   onClick={toggleGlobalMic}
-                  className={`mt-6 w-full py-6 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all shadow-xl ${globalMicActive ? 'bg-red-600 animate-pulse text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                  className={`w-full py-8 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all shadow-xl ${globalMicActive ? 'bg-red-600 animate-pulse' : 'bg-white text-slate-900 hover:bg-slate-200'}`}
                >
-                 {globalMicActive ? <Loader2 className="animate-spin w-8 h-8" /> : <Mic className="w-8 h-8 font-bold" />}
-                 <span className="font-black text-sm">{globalMicActive ? 'ESCUCHANDO...' : 'DICTAR HISTORIA'}</span>
+                 {globalMicActive ? <Loader2 className="animate-spin w-10 h-10" /> : <Mic className="w-10 h-10" />}
+                 <span className="font-black text-lg tracking-tight">{globalMicActive ? 'FINALIZAR Y PROCESAR' : 'EMPEZAR A DICTAR'}</span>
                </button>
             </div>
 
@@ -477,12 +476,12 @@ export default function App() {
         {/* PANTALLA: RECIPE */}
         {activeTab === 'recipe' && (
           <div className="space-y-6 animate-in slide-in-from-bottom-5">
-            <div className="bg-blue-600 text-white p-6 rounded-3xl shadow-xl flex items-center justify-between">
+            <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold">Récipe Sugerido</h2>
-                <p className="text-xs text-blue-100 italic">Revisa y edita los fármacos o dosis.</p>
+                <h2 className="text-xl font-bold uppercase tracking-tighter text-white">Récipe Sugerido</h2>
+                <p className="text-xs text-slate-300 font-bold italic">Edita los fármacos según tu criterio.</p>
               </div>
-              <ClipboardCheck className="w-10 h-10 opacity-50" />
+              <ClipboardCheck className="w-10 h-10 text-slate-500" />
             </div>
 
             <div className="bg-white p-6 rounded-3xl shadow-xl space-y-6 border border-blue-100">
