@@ -24,7 +24,9 @@ import {
   Share,
   CheckCircle2,
   Info,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
@@ -40,6 +42,7 @@ export default function App() {
   
   // Navegación
   const [activeTab, setActiveTab] = useState('search') // search, patient, clinic, recipe, settings
+  const [expandedSection, setExpandedSection] = useState(1)
   
   // Estados Globales
   const [loading, setLoading] = useState(false)
@@ -69,12 +72,45 @@ export default function App() {
     edad: '', 
     cedula: '', 
     telefono: '', 
-    pref_contacto: 'WhatsApp', // Nuevo campo
+    pref_contacto: 'WhatsApp',
+    sexo: '',
+    ubicacion: '',
     alergias: '', 
     patologias: '', 
-    motivo_consulta: '' 
+    motivo_consulta: '',
+    inicio_sintomas: '',
+    caracteristicas_sintoma: '',
+    antecedentes: '',
+    medicamentos_habituales: '',
+    zona_desastre: false,
+    acceso_agua: true,
+    acceso_alimentos: true,
+    refugio_seguro: true
   })
-  const [historia, setHistoria] = useState({ anamnesis: '', examen_fisico: '', diagnostico: '', notas: '' })
+  const [historia, setHistoria] = useState({ 
+    anamnesis: '', 
+    examen_fisico: '', 
+    diagnostico: '', 
+    notas: '',
+    estado_general: '',
+    glasgow: 'Alerta',
+    coloracion_piel: [],
+    fc: '',
+    fr: '',
+    pa: '',
+    temperatura: '',
+    sato2: '',
+    inspeccion_cabeza: '',
+    inspeccion_torax: '',
+    inspeccion_abdomen: '',
+    inspeccion_extremidades: '',
+    diagnostico_presuntivo: '',
+    nivel_gravedad: 'Leve',
+    plan_accion: '',
+    criterio_derivacion: false,
+    banderas_rojas: [],
+    otra_bandera_roja: ''
+  })
   const [recipe, setRecipe] = useState({ diagnostico_confirmado: '', medicamentos: [], indicaciones: '', proxima_cita: '' })
   const [historialPaciente, setHistorialPaciente] = useState([]) // Nuevo para Evolución
 
@@ -294,10 +330,41 @@ export default function App() {
         paciente_id: pData.id,
         medico_owner_id: medicoActivo.id,
         medico_nombre: `${medicoActivo.nombre} ${medicoActivo.apellido}`,
+        canal_contacto: paciente.pref_contacto,
+        
+        // Datos clínicos nuevos
+        motivo: paciente.motivo_consulta,
+        inicio_sintomas: paciente.inicio_sintomas,
+        caracteristicas_sintoma: paciente.caracteristicas_sintoma,
+        antecedentes: paciente.antecedentes,
+        alergias: paciente.alergias,
+        medicamentos_habituales: paciente.medicamentos_habituales,
+        zona_disastre: paciente.zona_desastre,
+        acceso_agua: paciente.acceso_agua,
+        acceso_alimentos: paciente.acceso_alimentos,
+        refugio_seguro: paciente.refugio_seguro,
+
+        estado_general: historia.estado_general,
+        glasgow: historia.glasgow,
+        coloracion_piel: historia.coloracion_piel?.join(','),
+        fc: historia.fc,
+        fr: historia.fr,
+        pa: historia.pa,
+        temperatura: historia.temperatura,
+        sato2: historia.sato2,
+        inspeccion_cabeza: historia.inspeccion_cabeza,
+        inspeccion_torax: historia.inspeccion_torax,
+        inspeccion_abdomen: historia.inspeccion_abdomen,
+        inspeccion_extremidades: historia.inspeccion_extremidades,
+        diagnostico_presuntivo: historia.diagnostico,
+        nivel_gravedad: historia.nivel_gravedad,
+        plan_accion: historia.plan_accion,
+        criterio_derivacion: historia.criterio_derivacion,
+        banderas_rojas: historia.banderas_rojas,
+
         anamnesis: historia.anamnesis,
         examen_fisico: historia.examen_fisico,
         diagnostico: historia.diagnostico,
-        canal_contacto: paciente.pref_contacto,
         recipe: recipe,
         hora_inicio: horaInicioConsulta,
         hora_fin: new Date().toISOString()
@@ -649,52 +716,186 @@ export default function App() {
         {/* PANTALLA: CLINICA (GROQ ASSISTANT) */}
         {activeTab === 'clinic' && (
           <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-20">
-            <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-               <h2 className="text-2xl font-black mb-1 relative z-10 text-white uppercase tracking-tighter">DocBot Clínico</h2>
-               <p className="text-xs text-slate-300 relative z-10 font-bold uppercase tracking-widest mb-6">Evaluación por Voz Activa</p>
-               
-               <button 
-                  onClick={toggleGlobalMic}
-                  className={`w-full py-8 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all shadow-xl ${globalMicActive ? 'bg-red-600 animate-pulse' : 'bg-white text-slate-900 hover:bg-slate-200'}`}
-               >
-                 {globalMicActive ? <Loader2 className="animate-spin w-10 h-10" /> : <Mic className="w-10 h-10" />}
-                 <span className="font-black text-lg tracking-tight">{globalMicActive ? 'FINALIZAR Y PROCESAR' : 'EMPEZAR A DICTAR'}</span>
-               </button>
+            {/* BANNER DE EMERGENCIA */}
+            {(historia.nivel_gravedad === 'Emergencia' || (historia.banderas_rojas && historia.banderas_rojas.length > 0)) && (
+              <div className="bg-red-600 text-white text-center py-3 rounded-2xl font-bold animate-pulse shadow-lg flex items-center justify-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                ⚠️ ATENCIÓN PRESENCIAL INMEDIATA
+              </div>
+            )}
+
+            {/* SECCIÓN 1: ANAMNESIS */}
+            <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-200">
+              <button 
+                onClick={() => setExpandedSection(expandedSection === 1 ? 0 : 1)}
+                className={`w-full p-6 flex justify-between items-center ${expandedSection === 1 ? 'bg-medical-600 text-white' : 'text-slate-800'}`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${expandedSection === 1 ? 'bg-white text-medical-600' : 'bg-medical-100 text-medical-600'}`}>1</div>
+                  <span className="text-lg font-bold">Anamnesis y Datos</span>
+                </div>
+                {expandedSection === 1 ? <ChevronUp /> : <ChevronDown />}
+              </button>
+              
+              {expandedSection === 1 && (
+                <div className="p-6 space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Sexo</label>
+                      <select value={paciente.sexo} onChange={e=>setPaciente({...paciente, sexo:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border">
+                        <option value="">Seleccionar</option>
+                        <option>Masculino</option>
+                        <option>Femenino</option>
+                        <option>Otro</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Ubicación</label>
+                      <input value={paciente.ubicacion} onChange={e=>setPaciente({...paciente, ubicacion:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" placeholder="Ciudad/Sector" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Motivo de Consulta</label>
+                      <button onClick={() => toggleFieldMic('motivo_consulta', setPaciente, paciente)} className="p-2 bg-medical-50 text-medical-600 rounded-lg"><Mic className="w-4 h-4"/></button>
+                    </div>
+                    <textarea value={paciente.motivo_consulta} onChange={e=>setPaciente({...paciente, motivo_consulta:e.target.value})} className="w-full p-3 h-24 bg-slate-50 rounded-xl outline-none border text-sm" />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Inicio de Síntomas</label>
+                      <input type="datetime-local" value={paciente.inicio_sintomas} onChange={e=>setPaciente({...paciente, inicio_sintomas:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border text-sm" />
+                    </div>
+                  </div>
+
+                  <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 flex flex-col gap-2">
+                    <p className="text-[10px] font-bold text-orange-800 uppercase flex items-center gap-1"><Info className="w-3 h-3"/> Contexto de Contingencia</p>
+                    <div className="grid grid-cols-2 gap-2">
+                       <button onClick={()=>setPaciente({...paciente, zona_desastre:!paciente.zona_desastre})} className={`p-2 rounded-xl text-[10px] font-bold border transition-all ${paciente.zona_desastre ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-orange-600 border-orange-200'}`}>Zona Desastre</button>
+                       <button onClick={()=>setPaciente({...paciente, acceso_agua:!paciente.acceso_agua})} className={`p-2 rounded-xl text-[10px] font-bold border transition-all ${paciente.acceso_agua ? 'bg-blue-600 text-white border-blue-600' : 'bg-red-50 text-red-600 border-red-200'}`}>{paciente.acceso_agua ? 'Agua OK' : 'Sin Agua'}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {aiLoading && <div className="text-center p-4 bg-white rounded-2xl shadow-sm border border-medical-100 flex items-center justify-center gap-3"><Loader2 className="animate-spin text-medical-600" /> <span className="font-bold text-medical-800 italic">Estructurando relato médico...</span></div>}
+            {/* SECCIÓN 2: EXAMEN FÍSICO */}
+            <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-200">
+              <button 
+                onClick={() => setExpandedSection(expandedSection === 2 ? 0 : 2)}
+                className={`w-full p-6 flex justify-between items-center ${expandedSection === 2 ? 'bg-slate-700 text-white' : 'text-slate-800'}`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${expandedSection === 2 ? 'bg-white text-slate-700' : 'bg-slate-200 text-slate-600'}`}>2</div>
+                  <span className="text-lg font-bold">Examen Físico</span>
+                </div>
+                {expandedSection === 2 ? <ChevronUp /> : <ChevronDown />}
+              </button>
 
-            <div className="bg-white p-6 rounded-3xl shadow-xl space-y-4 border border-slate-100">
-               <div>
-                 <div className="flex justify-between items-center mb-1">
-                   <label className="text-[10px] font-black text-slate-400 uppercase">Anamnesis</label>
-                   <button onClick={() => toggleFieldMic('anamnesis', setHistoria, historia)} className="p-2 bg-medical-50 text-medical-600 rounded-lg shadow-sm border border-medical-100"><Mic className="w-6 h-6"/></button>
-                 </div>
-                 <textarea value={historia.anamnesis} onChange={e=>setHistoria({...historia, anamnesis:e.target.value})} className="w-full p-3 h-32 bg-slate-50 rounded-xl outline-none text-sm text-slate-900 font-medium" />
-               </div>
-               <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Examen Físico</label>
-                    <button onClick={() => toggleFieldMic('examen_fisico', setHistoria, historia)} className="p-2 bg-medical-50 text-medical-600 rounded-lg shadow-sm border border-medical-100"><Mic className="w-6 h-6"/></button>
+              {expandedSection === 2 && (
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Glasgow</label>
+                      <select value={historia.glasgow} onChange={e=>setHistoria({...historia, glasgow:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border text-xs">
+                        <option>Alerta</option>
+                        <option>Confuso</option>
+                        <option>Somnoliento</option>
+                        <option>Inconsciente</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">FC (lpm)</label>
+                      <input value={historia.fc} onChange={e=>setHistoria({...historia, fc:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" placeholder="--" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">FR (rpm)</label>
+                      <input value={historia.fr} onChange={e=>setHistoria({...historia, fr:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" placeholder="--" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">SatO2 (%)</label>
+                      <input value={historia.sato2} onChange={e=>setHistoria({...historia, sato2:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" placeholder="--" />
+                    </div>
                   </div>
-                 <textarea value={historia.examen_fisico} onChange={e=>setHistoria({...historia, examen_fisico:e.target.value})} className="w-full p-3 h-24 bg-slate-50 rounded-xl outline-none text-sm text-slate-900 font-medium" />
-               </div>
-               <div className="p-4 bg-medical-50 rounded-2xl border border-medical-100">
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[10px] font-black text-medical-600 uppercase">Diagnóstico Presuntivo</label>
-                    <button onClick={() => toggleFieldMic('diagnostico', setHistoria, historia)} className="p-2 bg-medical-50 text-medical-600 rounded-lg shadow-sm border border-medical-100"><Mic className="w-6 h-6"/></button>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Hallazgos Examen Físico</label>
+                      <button onClick={() => toggleFieldMic('examen_fisico', setHistoria, historia)} className="p-2 bg-medical-50 text-medical-600 rounded-lg"><Mic className="w-4 h-4"/></button>
+                    </div>
+                    <textarea value={historia.examen_fisico} onChange={e=>setHistoria({...historia, examen_fisico:e.target.value})} className="w-full p-3 h-32 bg-slate-50 rounded-xl outline-none border text-sm" placeholder="Dicta los hallazgos por sistemas..." />
                   </div>
-                  <textarea value={historia.diagnostico} onChange={e=>setHistoria({...historia, diagnostico:e.target.value})} className="w-full bg-transparent p-0 h-16 outline-none font-bold text-slate-800" />
-               </div>
-               <button onClick={generarRecipeIA} disabled={aiLoading} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg">
-                  Generar Récipe con IA <ArrowRight className="w-5 h-5"/>
-               </button>
+                </div>
+              )}
+            </div>
+
+            {/* SECCIÓN 3: DIAGNÓSTICO Y PLAN */}
+            <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-200">
+              <button 
+                onClick={() => setExpandedSection(expandedSection === 3 ? 0 : 3)}
+                className={`w-full p-6 flex justify-between items-center ${expandedSection === 3 ? 'bg-indigo-600 text-white' : 'text-slate-800'}`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${expandedSection === 3 ? 'bg-white text-indigo-600' : 'bg-indigo-100 text-indigo-600'}`}>3</div>
+                  <span className="text-lg font-bold">Diagnóstico y Plan</span>
+                </div>
+                {expandedSection === 3 ? <ChevronUp /> : <ChevronDown />}
+              </button>
+
+              {expandedSection === 3 && (
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Leve', 'Moderado', 'Severo', 'Emergencia'].map(lvl => (
+                      <button 
+                        key={lvl} 
+                        onClick={()=>setHistoria({...historia, nivel_gravedad:lvl})}
+                        className={`py-3 rounded-2xl font-black text-[10px] uppercase border-2 transition-all ${historia.nivel_gravedad === lvl ? (lvl === 'Emergencia' ? 'bg-red-600 border-red-600 text-white animate-pulse' : 'bg-indigo-600 border-indigo-600 text-white') : 'bg-slate-50 border-transparent text-slate-400'}`}
+                      >
+                        {lvl}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Diagnóstico Presuntivo</label>
+                      <button onClick={() => toggleFieldMic('diagnostico', setHistoria, historia)} className="p-2 bg-medical-50 text-medical-600 rounded-lg"><Mic className="w-4 h-4"/></button>
+                    </div>
+                    <textarea value={historia.diagnostico} onChange={e=>setHistoria({...historia, diagnostico:e.target.value})} className="w-full p-3 h-20 bg-indigo-50 text-indigo-900 font-bold rounded-xl outline-none border border-indigo-100" />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Banderas Rojas</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['Dificultad respiratoria', 'Sangrado', 'Alteración mental', 'Dolor torácico'].map(b => (
+                        <button 
+                          key={b} 
+                          onClick={()=>{
+                            const current = historia.banderas_rojas || []
+                            const next = current.includes(b) ? current.filter(x=>x!==b) : [...current, b]
+                            setHistoria({...historia, banderas_rojas:next})
+                          }}
+                          className={`px-4 py-2 rounded-full text-[10px] font-bold border-2 transition-all ${historia.banderas_rojas?.includes(b) ? 'bg-red-600 border-red-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
+                        >
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button onClick={generarRecipeIA} disabled={aiLoading} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg">
+                    {aiLoading ? <Loader2 className="animate-spin" /> : <ClipboardCheck />} Generar Récipe con IA
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* EVOLUCIÓN (Historial Previo) */}
             {historialPaciente.length > 0 && (
               <div className="bg-slate-50 p-6 rounded-3xl border border-dashed border-slate-200">
-                <h3 className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Evolución / Pasado</h3>
+                <h3 className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Atenciones Previas</h3>
                 <div className="space-y-4">
                   {historialPaciente.map((h, i) => (
                     <div key={i} className="text-xs space-y-1 bg-white p-3 rounded-xl shadow-sm">
