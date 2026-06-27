@@ -47,7 +47,8 @@ export default function LoginPage() {
         router.push('/')
       }
     } catch (err) {
-      alert('Error de conexión. Intenta de nuevo.')
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'NO CONFIGURADA'
+      alert(`Error de conexión: ${err.message}\nURL detectada: ${url.substring(0,12)}...`)
     } finally {
       setLoading(false)
     }
@@ -194,8 +195,11 @@ export default function LoginPage() {
               <div className="space-y-1">
                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Especialidad</label>
                  <select 
-                  value={registerData.especialidad}
-                  onChange={e => setRegisterData({...registerData, especialidad: e.target.value})}
+                  value={registerData.especialidad.includes('Medicina General') || registerData.especialidad.includes('Pediatría') || registerData.especialidad.includes('Ginecología') || registerData.especialidad.includes('Cardiología') || registerData.especialidad.includes('Traumatología') ? registerData.especialidad : 'Otra'}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setRegisterData({...registerData, especialidad: val === 'Otra' ? '' : val})
+                  }}
                   className="w-full p-3 bg-slate-50 rounded-xl border-2 border-transparent focus:border-medical-500 outline-none font-bold text-sm"
                  >
                    <option>Medicina General</option>
@@ -205,6 +209,15 @@ export default function LoginPage() {
                    <option>Traumatología</option>
                    <option>Otra</option>
                  </select>
+                 
+                 {(registerData.especialidad === '' || !['Medicina General', 'Pediatría', 'Ginecología', 'Cardiología', 'Traumatología'].includes(registerData.especialidad)) && (
+                   <input 
+                    placeholder="Especifica tu especialidad"
+                    value={registerData.especialidad}
+                    onChange={e => setRegisterData({...registerData, especialidad: e.target.value})}
+                    className="w-full mt-2 p-3 bg-white rounded-xl border-2 border-medical-200 outline-none font-bold text-sm animate-in slide-in-from-top-2"
+                   />
+                 )}
               </div>
 
               <div className="space-y-1">
