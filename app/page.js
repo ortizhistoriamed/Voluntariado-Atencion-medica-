@@ -46,7 +46,17 @@ export default function App() {
 
   // Datos
   const [medico, setMedico] = useState({ nombre: '', especialidad: '', registro: '' })
-  const [paciente, setPaciente] = useState({ id: '', nombre: '', edad: '', cedula: '', telefono: '', alergias: '', patologias: '', motivo_consulta: '' })
+  const [paciente, setPaciente] = useState({ 
+    id: '', 
+    nombre: '', 
+    edad: '', 
+    cedula: '', 
+    telefono: '', 
+    pref_contacto: 'WhatsApp', // Nuevo campo
+    alergias: '', 
+    patologias: '', 
+    motivo_consulta: '' 
+  })
   const [historia, setHistoria] = useState({ anamnesis: '', examen_fisico: '', diagnostico: '', notas: '' })
   const [recipe, setRecipe] = useState({ diagnostico_confirmado: '', medicamentos: [], indicaciones: '', proxima_cita: '' })
 
@@ -138,9 +148,10 @@ export default function App() {
         cedula: data.cedula || prev.cedula,
         edad: data.edad || prev.edad,
         telefono: data.telefono || prev.telefono,
+        pref_contacto: data.pref_contacto || prev.pref_contacto,
         alergias: data.alergias || prev.alergias
       }))
-      showAlert("¡Datos Extraídos!", "El asistente ha llenado los campos por ti.", "success")
+      showAlert("DocBot", "Datos extraídos y cargados correctamente.", "success")
     } catch (err) { 
       showAlert("Error Asistente", "No pudimos extraer los datos del relato.", "error")
     }
@@ -200,6 +211,7 @@ export default function App() {
           cedula: paciente.cedula,
           edad: paciente.edad, 
           telefono: paciente.telefono,
+          pref_contacto: paciente.pref_contacto,
           alergias: paciente.alergias 
         }, { onConflict: 'cedula' })
         .select().single()
@@ -309,19 +321,19 @@ export default function App() {
                    <UserPlus className="w-24 h-24" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2">Registro Rápido</h2>
-                  <p className="text-xs text-medical-100">Díctale los datos al asistente.</p>
+                  <h2 className="text-xl font-bold flex items-center gap-2">Asistente DocBot</h2>
+                  <p className="text-xs text-medical-800 font-medium">Díctale los datos al asistente.</p>
                 </div>
                 <button 
                   onClick={togglePatientMic}
-                  className={`p-4 rounded-2xl shadow-lg transition-all ${patientMicActive ? 'bg-red-500 animate-pulse' : 'bg-white text-medical-600'}`}
+                  className={`p-4 rounded-2xl shadow-lg transition-all ${patientMicActive ? 'bg-red-500 animate-pulse text-white' : 'bg-white text-medical-600'}`}
                 >
                   <Mic className={patientMicActive ? 'animate-bounce' : ''} />
                 </button>
             </div>
 
             <div className="bg-white p-8 rounded-3xl shadow-xl space-y-6 border border-slate-100 animate-in slide-in-from-bottom-5">
-              {aiLoading && <div className="flex items-center justify-center gap-2 text-medical-600 font-bold text-sm bg-medical-50 p-3 rounded-xl"><Loader2 className="animate-spin" /> Procesando datos...</div>}
+              {aiLoading && <div className="flex items-center justify-center gap-2 text-medical-600 font-bold text-sm bg-medical-50 p-3 rounded-xl"><Loader2 className="animate-spin" /> DocBot procesando...</div>}
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-1">
@@ -339,11 +351,21 @@ export default function App() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alergias Relevantes</label>
-                  <input value={paciente.alergias} onChange={e=>setPaciente({...paciente, alergias:e.target.value})} className="w-full p-3 bg-red-50 text-red-600 rounded-xl outline-none border border-red-100 font-bold" />
+                  <input value={paciente.alergias} onChange={e=>setPaciente({...paciente, alergias:e.target.value})} className="w-full p-3 bg-red-50 text-red-700 rounded-xl outline-none border border-red-200 font-bold" />
                 </div>
-                <div className="space-y-1">
-                   <label className="text-[10px] font-bold text-slate-400 uppercase">Teléfono</label>
-                   <input value={paciente.telefono} onChange={e=>setPaciente({...paciente, telefono:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" placeholder="+58..." />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Teléfono</label>
+                    <input value={paciente.telefono} onChange={e=>setPaciente({...paciente, telefono:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" placeholder="+58..." />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Contacto Pref.</label>
+                    <select value={paciente.pref_contacto} onChange={e=>setPaciente({...paciente, pref_contacto:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border text-xs font-bold text-slate-700">
+                      <option>WhatsApp</option>
+                      <option>Llamada</option>
+                      <option>SMS</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <button onClick={()=>setActiveTab('clinic')} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold shadow-xl flex items-center justify-center gap-2">
@@ -358,15 +380,15 @@ export default function App() {
           <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-20">
             <div className="bg-medical-900 text-white p-6 rounded-3xl shadow-2xl relative overflow-hidden">
                <div className="absolute right-0 top-0 w-32 h-32 bg-medical-500/10 rounded-full -mr-16 -mt-16"></div>
-               <h2 className="text-xl font-bold mb-1 relative z-10">Asistente de Consulta</h2>
-               <p className="text-xs text-medical-200 relative z-10">Presiona el micro y descríbeme el caso. Yo lo estructuraré por ti.</p>
+               <h2 className="text-xl font-bold mb-1 relative z-10">DocBot Clínico</h2>
+               <p className="text-xs text-medical-200 relative z-10 font-bold tracking-tight">Presiona y describe el caso clínico.</p>
                
                <button 
                   onClick={toggleGlobalMic}
-                  className={`mt-6 w-full py-6 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all shadow-xl ${globalMicActive ? 'bg-red-500 animate-pulse' : 'bg-white text-medical-900 hover:bg-medical-50'}`}
+                  className={`mt-6 w-full py-6 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all shadow-xl ${globalMicActive ? 'bg-red-500 animate-pulse text-white' : 'bg-white text-medical-900 hover:bg-medical-50'}`}
                >
                  {globalMicActive ? <Loader2 className="animate-spin w-8 h-8" /> : <Mic className="w-8 h-8" />}
-                 <span className="font-black text-sm">{globalMicActive ? 'ESCUCHANDO...' : 'DICTAR HISTORIA COMPLETA'}</span>
+                 <span className="font-black text-sm">{globalMicActive ? 'OYENDO AL MÉDICO...' : 'DICTAR HISTORIA'}</span>
                </button>
             </div>
 
