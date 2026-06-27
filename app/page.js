@@ -100,6 +100,10 @@ export default function App() {
   }
 
   // AI Voice Assistant (Estructurador)
+  const toggleGlobalMic = () => {
+    if (globalMicActive) {
+      recognitionRef.current.stop()
+      setGlobalMicActive(false)
     } else {
       let fullTranscript = ''
       recognitionRef.current.onresult = (e) => {
