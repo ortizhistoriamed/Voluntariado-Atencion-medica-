@@ -1,6 +1,6 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'; // Build trigger: fixed connection logic
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
