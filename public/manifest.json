@@ -1,0 +1,16 @@
+{
+  "name": "Voluntariado Médico",
+  "short_name": "VoluntarioMed",
+  "description": "Sistema de atención para médicos voluntarios",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3774/3774299.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
