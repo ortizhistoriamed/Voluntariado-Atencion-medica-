@@ -25,6 +25,8 @@ import {
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import InstallBanner from '@/components/InstallBanner'
+import CustomModal from '@/components/CustomModal'
 
 export default function App() {
   // Navegación
@@ -37,6 +39,10 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [finalizado, setFinalizado] = useState(false)
+
+  // Modales
+  const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '' })
+  const showAlert = (title, message, type = 'info') => setModal({ open: true, title, message, type })
 
   // Datos
   const [medico, setMedico] = useState({ nombre: '', especialidad: '', registro: '' })
@@ -115,7 +121,9 @@ export default function App() {
         notas: ''
       })
       setActiveTab('clinic')
-    } catch (err) { alert("Error estructurando con Groq") }
+    } catch (err) { 
+      showAlert("Error IA", "No pudimos estructurar el relato. Intenta dictar más pausado.", "error")
+    }
     finally { setAiLoading(false) }
   }
 
@@ -134,7 +142,9 @@ export default function App() {
         proxima_cita: data.proxima_cita || ''
       })
       setActiveTab('recipe')
-    } catch (err) { alert("Error generando récipe") }
+    } catch (err) { 
+        showAlert("Error Generación", "Hubo un problema al crear el récipe con Groq.", "error")
+    }
     finally { setAiLoading(false) }
   }
 
@@ -142,7 +152,7 @@ export default function App() {
     setSaving(true)
     try {
       // Upsert Paciente
-      const { data: pData } = await supabase
+      const { data: pData, error: pError } = await supabase
         .from('pacientes')
         .upsert({ 
           nombre: paciente.nombre, 
@@ -152,9 +162,11 @@ export default function App() {
           alergias: paciente.alergias 
         }, { onConflict: 'cedula' })
         .select().single()
+      
+      if (pError) throw pError
 
       // Guardar Consulta
-      await supabase.from('consultas').insert({
+      const { error: cError } = await supabase.from('consultas').insert({
         paciente_id: pData.id,
         medico_id: '88888888-8888-4888-8888-888888888888',
         anamnesis: historia.anamnesis,
@@ -162,8 +174,14 @@ export default function App() {
         diagnostico: historia.diagnostico,
         recipe: recipe
       })
+      
+      if (cError) throw cError
+
       setFinalizado(true)
-    } catch (err) { alert("Error al guardar") }
+      showAlert("¡Consulta Guardada!", "La atención ha sido registrada exitosamente.", "success")
+    } catch (err) { 
+        showAlert("Error Guardado", "No pudimos conectar con Supabase. Revisa tu internet.", "error")
+    }
     finally { setSaving(false) }
   }
 
@@ -369,7 +387,7 @@ export default function App() {
                <div><label className="text-[10px] font-bold text-slate-400">Nombre del Médico</label><input value={medico.nombre} onChange={e=>setMedico({...medico, nombre:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border outline-none" /></div>
                <div><label className="text-[10px] font-bold text-slate-400">Especialidad</label><input value={medico.especialidad} onChange={e=>setMedico({...medico, especialidad:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border outline-none" /></div>
                <div><label className="text-[10px] font-bold text-slate-400">Registro Médico / ID Sanitario</label><input value={medico.registro} onChange={e=>setMedico({...medico, registro:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border outline-none" /></div>
-               <button onClick={() => {localStorage.setItem('medico_data', JSON.stringify(medico)); alert("Guardado");}} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold shadow-lg">Guardar Cambios Localmente</button>
+               <button onClick={saveMedico} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold shadow-lg">Guardar Cambios Localmente</button>
             </div>
           </div>
         )}
@@ -399,6 +417,16 @@ export default function App() {
           <span className="text-[9px] font-bold uppercase tracking-tight">Perfil</span>
         </button>
       </nav>
+
+      {/* Elementos Globales de PWA */}
+      <InstallBanner />
+      <CustomModal 
+        isOpen={modal.open} 
+        onClose={() => setModal({ ...modal, open: false })} 
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
 
     </div>
   )
