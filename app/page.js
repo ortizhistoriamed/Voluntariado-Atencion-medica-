@@ -26,7 +26,9 @@ import {
   Info,
   AlertCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileText,
+  X
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
