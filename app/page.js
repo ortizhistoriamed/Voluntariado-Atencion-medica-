@@ -52,6 +52,7 @@ export default function App() {
 
   // Mic y Voz
   const [globalMicActive, setGlobalMicActive] = useState(false)
+  const [patientMicActive, setPatientMicActive] = useState(false)
   const recognitionRef = useRef(null)
 
   useEffect(() => {
@@ -104,6 +105,46 @@ export default function App() {
       recognitionRef.current.start()
       setGlobalMicActive(true)
     }
+  }
+
+  const togglePatientMic = () => {
+    if (patientMicActive) {
+      recognitionRef.current.stop()
+      setPatientMicActive(false)
+    } else {
+      let fullTranscript = ''
+      recognitionRef.current.onresult = (e) => {
+        fullTranscript += ' ' + e.results[e.results.length - 1][0].transcript
+      }
+      recognitionRef.current.onend = async () => {
+        if (fullTranscript.trim()) extractPatientDataWithAI(fullTranscript)
+      }
+      recognitionRef.current.start()
+      setPatientMicActive(true)
+    }
+  }
+
+  const extractPatientDataWithAI = async (text) => {
+    setAiLoading(true)
+    try {
+      const res = await fetch('/api/structurar-paciente', {
+        method: 'POST',
+        body: JSON.stringify({ rawText: text })
+      })
+      const data = await res.json()
+      setPaciente(prev => ({
+        ...prev,
+        nombre: data.nombre || prev.nombre,
+        cedula: data.cedula || prev.cedula,
+        edad: data.edad || prev.edad,
+        telefono: data.telefono || prev.telefono,
+        alergias: data.alergias || prev.alergias
+      }))
+      showAlert("¡Datos Extraídos!", "El asistente ha llenado los campos por ti.", "success")
+    } catch (err) { 
+      showAlert("Error Asistente", "No pudimos extraer los datos del relato.", "error")
+    }
+    finally { setAiLoading(false) }
   }
 
   const structureWithAI = async (text) => {
@@ -262,29 +303,53 @@ export default function App() {
 
         {/* PANTALLA: DATOS PACIENTE */}
         {activeTab === 'patient' && (
-          <div className="bg-white p-8 rounded-3xl shadow-xl space-y-6 animate-in slide-in-from-bottom-5">
-            <h2 className="text-xl font-bold flex items-center gap-2"><UserIcon className="text-medical-500" /> Datos de Registro</h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Nombre</label>
-                  <input value={paciente.nombre} onChange={e=>setPaciente({...paciente, nombre:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border active:border-medical-500" />
+          <div className="space-y-6">
+            <div className="bg-medical-600 text-white p-6 rounded-3xl shadow-xl flex items-center justify-between relative overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-10">
+                   <UserPlus className="w-24 h-24" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Cédula / ID</label>
-                  <input value={paciente.cedula} onChange={e=>setPaciente({...paciente, cedula:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" />
+                <div>
+                  <h2 className="text-xl font-bold flex items-center gap-2">Registro Rápido</h2>
+                  <p className="text-xs text-medical-100">Díctale los datos al asistente.</p>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Edad</label>
-                  <input type="number" value={paciente.edad} onChange={e=>setPaciente({...paciente, edad:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Alergias</label>
-                <input value={paciente.alergias} onChange={e=>setPaciente({...paciente, alergias:e.target.value})} className="w-full p-3 bg-red-50 text-red-600 rounded-xl outline-none border border-red-100 font-bold" />
-              </div>
+                <button 
+                  onClick={togglePatientMic}
+                  className={`p-4 rounded-2xl shadow-lg transition-all ${patientMicActive ? 'bg-red-500 animate-pulse' : 'bg-white text-medical-600'}`}
+                >
+                  <Mic className={patientMicActive ? 'animate-bounce' : ''} />
+                </button>
             </div>
-            <button onClick={()=>setActiveTab('clinic')} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold shadow-xl">Iniciar Historia Clínica</button>
+
+            <div className="bg-white p-8 rounded-3xl shadow-xl space-y-6 border border-slate-100 animate-in slide-in-from-bottom-5">
+              {aiLoading && <div className="flex items-center justify-center gap-2 text-medical-600 font-bold text-sm bg-medical-50 p-3 rounded-xl"><Loader2 className="animate-spin" /> Procesando datos...</div>}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Nombre</label>
+                    <input value={paciente.nombre} onChange={e=>setPaciente({...paciente, nombre:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border active:border-medical-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Cédula / ID</label>
+                    <input value={paciente.cedula} onChange={e=>setPaciente({...paciente, cedula:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Edad</label>
+                    <input type="number" value={paciente.edad} onChange={e=>setPaciente({...paciente, edad:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alergias Relevantes</label>
+                  <input value={paciente.alergias} onChange={e=>setPaciente({...paciente, alergias:e.target.value})} className="w-full p-3 bg-red-50 text-red-600 rounded-xl outline-none border border-red-100 font-bold" />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-[10px] font-bold text-slate-400 uppercase">Teléfono</label>
+                   <input value={paciente.telefono} onChange={e=>setPaciente({...paciente, telefono:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" placeholder="+58..." />
+                </div>
+              </div>
+              <button onClick={()=>setActiveTab('clinic')} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-bold shadow-xl flex items-center justify-center gap-2">
+                Continuar a Evaluación <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         )}
 
