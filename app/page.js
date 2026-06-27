@@ -267,6 +267,8 @@ export default function App() {
     finally { setAiLoading(false) }
   }
 
+  const finalizarYGuardar = async () => {
+    setSaving(true)
     try {
       const supabase = getSupabase()
       if (!medicoActivo) return
