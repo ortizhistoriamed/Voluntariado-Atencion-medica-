@@ -40,9 +40,9 @@ export default function App() {
   const [medicoActivo, setMedicoActivo] = useState(null)
   const [mostrarBienvenida, setMostrarBienvenida] = useState(false)
   
-  // Navegación
   const [activeTab, setActiveTab] = useState('search') // search, patient, clinic, recipe, settings
   const [expandedSection, setExpandedSection] = useState(1)
+  const [showPreview, setShowPreview] = useState(false)
   
   // Estados Globales
   const [loading, setLoading] = useState(false)
@@ -82,10 +82,8 @@ export default function App() {
     caracteristicas_sintoma: '',
     antecedentes: '',
     medicamentos_habituales: '',
-    zona_desastre: false,
-    acceso_agua: true,
-    acceso_alimentos: true,
-    refugio_seguro: true
+    contexto_contingencia: [], // Reemplaza toggles con array de chips
+    zona_desastre: false
   })
   const [historia, setHistoria] = useState({ 
     anamnesis: '', 
@@ -336,13 +334,11 @@ export default function App() {
         motivo: paciente.motivo_consulta,
         inicio_sintomas: paciente.inicio_sintomas,
         caracteristicas_sintoma: paciente.caracteristicas_sintoma,
+        contexto_contingencia: paciente.contexto_contingencia,
         antecedentes: paciente.antecedentes,
         alergias: paciente.alergias,
         medicamentos_habituales: paciente.medicamentos_habituales,
-        zona_disastre: paciente.zona_desastre,
-        acceso_agua: paciente.acceso_agua,
-        acceso_alimentos: paciente.acceso_alimentos,
-        refugio_seguro: paciente.refugio_seguro,
+        zona_desastre: paciente.zona_desastre,
 
         estado_general: historia.estado_general,
         glasgow: historia.glasgow,
@@ -716,66 +712,128 @@ export default function App() {
         {/* PANTALLA: CLINICA (GROQ ASSISTANT) */}
         {activeTab === 'clinic' && (
           <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-20">
-            {/* BANNER DE EMERGENCIA */}
-            {(historia.nivel_gravedad === 'Emergencia' || (historia.banderas_rojas && historia.banderas_rojas.length > 0)) && (
-              <div className="bg-red-600 text-white text-center py-3 rounded-2xl font-bold animate-pulse shadow-lg flex items-center justify-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                ⚠️ ATENCIÓN PRESENCIAL INMEDIATA
+            {/* BANNER DE EMERGENCIA POTENCIADO */}
+            {(historia.banderas_rojas?.length > 0 || historia.nivel_gravedad === 'Emergencia') && (
+              <div className="bg-red-600 text-white p-4 rounded-3xl font-black shadow-2xl animate-pulse flex flex-col items-center gap-3 text-center border-4 border-white/20">
+                <div className="flex items-center gap-2 text-lg">
+                  <AlertCircle className="w-8 h-8" />
+                  {historia.banderas_rojas?.length >= 3 
+                    ? '🚨 MÚLTIPLES BANDERAS ROJAS — EVACUACIÓN INMEDIATA' 
+                    : '⚠️ ATENCIÓN PRESENCIAL INMEDIATA'}
+                </div>
+                {historia.banderas_rojas?.length >= 3 && (
+                   <a 
+                    href={`https://wa.me/${medicoActivo?.whatsapp_coordinador || ''}?text=${encodeURIComponent(`🚨 ALERTA ROJA: Paciente ${paciente.nombre} con múltiples banderas rojas en jornada.`)}`} 
+                    target="_blank"
+                    className="bg-white text-red-600 px-6 py-3 rounded-2xl font-black shadow-xl flex items-center gap-2 hover:bg-slate-100 transition-all uppercase tracking-tighter"
+                   >
+                     <Phone className="w-5 h-5"/> Alertar Coordinador por WhatsApp
+                   </a>
+                )}
               </div>
             )}
 
             {/* SECCIÓN 1: ANAMNESIS */}
-            <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-200">
+            <div className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-200">
               <button 
                 onClick={() => setExpandedSection(expandedSection === 1 ? 0 : 1)}
                 className={`w-full p-6 flex justify-between items-center ${expandedSection === 1 ? 'bg-medical-600 text-white' : 'text-slate-800'}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${expandedSection === 1 ? 'bg-white text-medical-600' : 'bg-medical-100 text-medical-600'}`}>1</div>
-                  <span className="text-lg font-bold">Anamnesis y Datos</span>
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg ${expandedSection === 1 ? 'bg-white text-medical-600' : 'bg-medical-100 text-medical-600'}`}>1</div>
+                  <span className="text-xl font-black tracking-tight">Anamnesis y Contexto</span>
                 </div>
-                {expandedSection === 1 ? <ChevronUp /> : <ChevronDown />}
+                {expandedSection === 1 ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
               </button>
               
               {expandedSection === 1 && (
-                <div className="p-6 space-y-5">
+                <div className="p-6 space-y-7">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Sexo</label>
-                      <select value={paciente.sexo} onChange={e=>setPaciente({...paciente, sexo:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border">
-                        <option value="">Seleccionar</option>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sexo Biológico</label>
+                      <select value={paciente.sexo} onChange={e=>setPaciente({...paciente, sexo:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-medical-300 font-bold text-slate-700">
+                        <option value="">--</option>
                         <option>Masculino</option>
                         <option>Femenino</option>
                         <option>Otro</option>
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Ubicación</label>
-                      <input value={paciente.ubicacion} onChange={e=>setPaciente({...paciente, ubicacion:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border" placeholder="Ciudad/Sector" />
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ubicación</label>
+                      <input value={paciente.ubicacion} onChange={e=>setPaciente({...paciente, ubicacion:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-medical-300 font-bold" placeholder="Sector/Refugio" />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Motivo de Consulta</label>
-                      <button onClick={() => toggleFieldMic('motivo_consulta', setPaciente, paciente)} className="p-2 bg-medical-50 text-medical-600 rounded-lg"><Mic className="w-4 h-4"/></button>
+                    <div className="flex justify-between items-center px-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Motivo de Consulta</label>
+                      <div className="flex gap-2">
+                        <button onClick={() => toggleFieldMic('motivo_consulta', setPaciente, paciente)} className={`p-2 rounded-xl transition-all ${globalMicActive ? 'bg-red-100 text-red-600' : 'bg-medical-50 text-medical-600 shadow-sm border border-medical-100'}`}>
+                           <Mic className={`w-5 h-5 ${globalMicActive ? 'animate-pulse' : ''}`} />
+                        </button>
+                      </div>
                     </div>
-                    <textarea value={paciente.motivo_consulta} onChange={e=>setPaciente({...paciente, motivo_consulta:e.target.value})} className="w-full p-3 h-24 bg-slate-50 rounded-xl outline-none border text-sm" />
+                    <textarea 
+                      value={paciente.motivo_consulta} 
+                      onChange={e=>setPaciente({...paciente, motivo_consulta:e.target.value})} 
+                      className="w-full p-4 h-32 bg-slate-50 rounded-3xl outline-none border-2 border-transparent focus:border-medical-300 text-sm font-medium shadow-inner" 
+                      placeholder="Dicta o escribe el motivo..."
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Inicio de Síntomas</label>
-                      <input type="datetime-local" value={paciente.inicio_sintomas} onChange={e=>setPaciente({...paciente, inicio_sintomas:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border text-sm" />
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Inicio de Síntomas</label>
+                      <input type="datetime-local" value={paciente.inicio_sintomas} onChange={e=>setPaciente({...paciente, inicio_sintomas:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-medical-300 font-bold text-slate-600" />
                     </div>
                   </div>
 
-                  <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 flex flex-col gap-2">
-                    <p className="text-[10px] font-bold text-orange-800 uppercase flex items-center gap-1"><Info className="w-3 h-3"/> Contexto de Contingencia</p>
-                    <div className="grid grid-cols-2 gap-2">
-                       <button onClick={()=>setPaciente({...paciente, zona_desastre:!paciente.zona_desastre})} className={`p-2 rounded-xl text-[10px] font-bold border transition-all ${paciente.zona_desastre ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-orange-600 border-orange-200'}`}>Zona Desastre</button>
-                       <button onClick={()=>setPaciente({...paciente, acceso_agua:!paciente.acceso_agua})} className={`p-2 rounded-xl text-[10px] font-bold border transition-all ${paciente.acceso_agua ? 'bg-blue-600 text-white border-blue-600' : 'bg-red-50 text-red-600 border-red-200'}`}>{paciente.acceso_agua ? 'Agua OK' : 'Sin Agua'}</button>
-                    </div>
+                  {/* CONTEXTO DE CONTINGENCIA (CHIPS) */}
+                  <div className="bg-orange-50/50 p-6 rounded-[32px] border border-orange-100 space-y-6">
+                    <p className="text-xs font-black text-orange-800 uppercase flex items-center gap-2"><Info className="w-4 h-4"/> Contexto de Contingencia (Venezuela Terremoto)</p>
+                    
+                    {[
+                      { 
+                        title: 'Situación del paciente', 
+                        items: ['🏚️ Damnificado por terremoto', '埋 En albergue/refugio', '🏠 En vivienda dañada', '🌳 A la intemperie', '🚗 Desplazado de su zona'] 
+                      },
+                      { 
+                        title: 'Acceso a servicios básicos', 
+                        items: ['💧 Sin agua potable', '🍽️ Sin acceso a alimentos', '⚡ Sin electricidad', '📵 Sin comunicación estable', '🚑 Sin acceso a salud cercano'] 
+                      },
+                      { 
+                        title: 'Condición relacionada al evento', 
+                        items: ['🦴 Posible trauma por derrumbe', '🧱 Atrapado bajo escombros', '😰 Crisis de ansiedad/estrés', '👁️ Exposición traumática', '💊 Sin medicamentos crónicos', '🩸 Herida por escombros/vidrios'] 
+                      }
+                    ].map((grupo, idx) => (
+                      <div key={idx} className="space-y-3">
+                        <h4 className="text-[10px] font-black text-orange-400 uppercase tracking-widest">{grupo.title}</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {grupo.items.map(chip => {
+                            const active = (paciente.contexto_contingencia || []).includes(chip)
+                            return (
+                              <button 
+                                key={chip} 
+                                onClick={() => {
+                                  const current = paciente.contexto_contingencia || []
+                                  const next = active ? current.filter(x => x !== chip) : [...current, chip]
+                                  setPaciente({...paciente, contexto_contingencia: next})
+                                }}
+                                className={`px-4 py-2 rounded-2xl text-[10px] font-bold border-2 transition-all ${active ? 'bg-orange-600 border-orange-600 text-white shadow-lg' : 'bg-white border-orange-200 text-orange-600 hover:bg-orange-50'}`}
+                              >
+                                {chip}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+
+                    {(paciente.contexto_contingencia?.includes('🧱 Atrapado bajo escombros') || paciente.contexto_contingencia?.includes('🦴 Posible trauma por derrumbe')) && (
+                      <div className="bg-yellow-100 p-4 rounded-2xl border-2 border-yellow-200 text-yellow-900 text-[11px] font-bold animate-bounce mt-4">
+                        ⚠️ Considerar: síndrome de aplastamiento, trauma cerrado, lesiones en columna.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -867,9 +925,14 @@ export default function App() {
                   </div>
 
                   <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Banderas Rojas</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Banderas Rojas (Triaje Crítico)</label>
                     <div className="flex flex-wrap gap-2">
-                      {['Dificultad respiratoria', 'Sangrado', 'Alteración mental', 'Dolor torácico'].map(b => (
+                      {[
+                        'Dificultad respiratoria', 'Sangrado profuso', 'Alteración del estado mental', 'Dolor torácico',
+                        '🦴 Fractura expuesta o deformidad evidenté', '🫀 Pulso ausente o muy débil', '🧠 Pérdida de conciencia', 'Vómito persistente o con sangre',
+                        '🚽 Orina oscura o ausente', '👁️ Pupilas desiguales', '🫁 Cianosis (labios/dedos azules)', '🤰 Embarazada con dolor/sangrado',
+                        '👶 Menor de 5 años con fiebre alta', '⚡ Posible electrocución', '🔥 Quemaduras graves', '💉 Signos de shock'
+                      ].map(b => (
                         <button 
                           key={b} 
                           onClick={()=>{
@@ -877,7 +940,7 @@ export default function App() {
                             const next = current.includes(b) ? current.filter(x=>x!==b) : [...current, b]
                             setHistoria({...historia, banderas_rojas:next})
                           }}
-                          className={`px-4 py-2 rounded-full text-[10px] font-bold border-2 transition-all ${historia.banderas_rojas?.includes(b) ? 'bg-red-600 border-red-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
+                          className={`px-4 py-2 rounded-xl text-[10px] font-bold border-2 transition-all ${historia.banderas_rojas?.includes(b) ? 'bg-red-600 border-red-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400 hover:border-red-200'}`}
                         >
                           {b}
                         </button>
@@ -909,58 +972,102 @@ export default function App() {
           </div>
         )}
 
-        {/* PANTALLA: RECIPE */}
+        {/* PANTALLA: RÉCIPE */}
         {activeTab === 'recipe' && (
-          <div className="space-y-6 animate-in slide-in-from-bottom-5">
-            <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl flex items-center justify-between">
+          <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-20">
+            <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-bold uppercase tracking-tighter text-white">Récipe Sugerido</h2>
-                <p className="text-xs text-slate-300 font-bold italic">Edita los fármacos según tu criterio.</p>
+                <h2 className="text-xl font-black uppercase tracking-tighter">Récipe Médico</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Edita los fármacos según tu criterio</p>
               </div>
-              <ClipboardCheck className="w-10 h-10 text-slate-500" />
+              <div className="flex gap-2">
+                 <button onClick={() => toggleFieldMic('indicaciones', setRecipe, recipe)} className={`p-3 rounded-2xl transition-all ${globalMicActive ? 'bg-red-600 text-white animate-pulse' : 'bg-white text-slate-900'}`}>
+                    <Mic className="w-5 h-5"/>
+                 </button>
+              </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl shadow-xl space-y-6 border border-blue-100">
-               <div className="space-y-3">
-                 <div className="flex justify-between items-center"><p className="font-bold text-slate-700">Medicamentos</p> <button onClick={() => setRecipe({...recipe, medicamentos: [...recipe.medicamentos, {nombre:'', dosis:'', frecuencia:'', duracion:''}]})} className="text-blue-500 text-xs font-bold">+ Agregar</button></div>
-                 <div className="space-y-2">
-                   {recipe.medicamentos.map((m,i) => (
-                     <div key={i} className="flex gap-2 bg-slate-50 p-2 rounded-xl items-center">
-                       <input value={m.nombre} onChange={e=>{const n=[...recipe.medicamentos]; n[i].nombre=e.target.value; setRecipe({...recipe, medicamentos:n})}} className="flex-1 bg-transparent text-sm font-bold outline-none" />
-                       <input value={m.dosis} onChange={e=>{const n=[...recipe.medicamentos]; n[i].dosis=e.target.value; setRecipe({...recipe, medicamentos:n})}} className="w-16 bg-transparent text-xs outline-none" placeholder="Dosis" />
-                       <button onClick={()=>{const n=[...recipe.medicamentos]; n.splice(i,1); setRecipe({...recipe, medicamentos:n})}} className="text-red-400"><Trash2 className="w-4 h-4"/></button>
-                     </div>
-                   ))}
-                 </div>
-               </div>
+            <div className="bg-white p-6 rounded-[32px] shadow-xl border border-slate-100 space-y-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Medicamentos</h3>
+                  <button onClick={() => setRecipe({...recipe, medicamentos: [...recipe.medicamentos, {nombre: '', dosis: '', frecuencia: '', duracion: ''}]})} className="text-medical-600 text-[10px] font-black uppercase flex items-center gap-1">
+                    <Plus className="w-3 h-3"/> Agregar
+                  </button>
+                </div>
+                
+                {recipe.medicamentos.map((m, i) => (
+                  <div key={i} className="grid grid-cols-12 gap-2 pb-4 border-b border-slate-50 items-center">
+                    <input 
+                      placeholder="Medicamento" 
+                      className="col-span-6 bg-slate-50 p-2 rounded-lg outline-none text-sm font-bold" 
+                      value={m.nombre} 
+                      onChange={e => {
+                        const next = [...recipe.medicamentos]
+                        next[i].nombre = e.target.value
+                        setRecipe({...recipe, medicamentos: next})
+                      }}
+                    />
+                    <input 
+                      placeholder="Dosis/Frec" 
+                      className="col-span-5 bg-slate-50 p-2 rounded-lg outline-none text-xs" 
+                      value={m.dosis} 
+                      onChange={e => {
+                        const next = [...recipe.medicamentos]
+                        next[i].dosis = e.target.value
+                        setRecipe({...recipe, medicamentos: next})
+                      }}
+                    />
+                    <button onClick={() => setRecipe({...recipe, medicamentos: recipe.medicamentos.filter((_, idx)=>idx!==i)})} className="col-span-1 text-red-300">
+                      <Trash2 className="w-4 h-4"/>
+                    </button>
+                  </div>
+                ))}
+              </div>
 
-               <div>
-                 <label className="text-[10px] font-black text-slate-400 uppercase">Indicaciones Generales</label>
-                 <textarea value={recipe.indicaciones} onChange={e=>setRecipe({...recipe, indicaciones:e.target.value})} className="w-full p-3 h-24 bg-slate-50 rounded-xl outline-none text-sm" />
-               </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Indicaciones Generales (Voz habilitada)</label>
+                <textarea 
+                  value={recipe.indicaciones} 
+                  onChange={e => setRecipe({...recipe, indicaciones: e.target.value})} 
+                  className="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-medical-300 text-sm h-32" 
+                  placeholder="Ej: Reposo por 3 días, abundante líquido..."
+                />
+              </div>
 
-               <div className="grid grid-cols-2 gap-4">
-                 <div>
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Próxima Cita</label>
-                   <input type="date" value={recipe.proxima_cita} onChange={e=>setRecipe({...recipe, proxima_cita:e.target.value})} className="w-full p-2 bg-slate-50 rounded-lg text-sm border-0" />
-                 </div>
-               </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Próxima Cita / Seguimiento</label>
+                <input 
+                  type="date" 
+                  value={recipe.proxima_cita} 
+                  onChange={e => setRecipe({...recipe, proxima_cita: e.target.value})} 
+                  className="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-medical-300 font-bold text-slate-600" 
+                />
+              </div>
 
-               {!finalizado ? (
-                 <button onClick={finalizarYGuardar} className="w-full py-4 bg-medical-700 text-white rounded-2xl font-black shadow-xl flex items-center justify-center gap-2">
-                   {saving ? <Loader2 className="animate-spin" /> : <Save />} CERRAR Y GUARDAR CONSULTA
-                 </button>
-               ) : (
-                 <div className="bg-white p-6 rounded-3xl shadow-xl space-y-4 border-2 border-medical-500">
-                   <button onClick={descargarPDF} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2">
-                     <Download className="w-6 h-6" /> DESCARGAR RÉCIPE (PDF)
-                   </button>
-                   <button onClick={enviarWhatsAppPaciente} className="w-full py-4 bg-green-600 text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2">
-                     <Share className="w-6 h-6" /> NOTIFICAR POR WHATSAPP
-                   </button>
-                   <button onClick={() => window.location.reload()} className="w-full text-medical-600 font-bold underline py-2">Nueva Consulta</button>
-                 </div>
-               )}
+              {!finalizado ? (
+                <button 
+                  onClick={() => setShowPreview(true)} 
+                  className="w-full py-5 bg-medical-600 text-white rounded-[24px] font-black text-lg shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+                >
+                  <FileText className="w-6 h-6"/> VISTA PREVIA Y FINALIZAR
+                </button>
+              ) : (
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="bg-green-50 p-6 rounded-[32px] border-2 border-green-200 text-center">
+                    <div className="bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <p className="font-black text-green-800 uppercase text-lg">Consulta Guardada</p>
+                  </div>
+                  <button onClick={descargarPDF} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2">
+                    <Download className="w-6 h-6" /> DESCARGAR PDF
+                  </button>
+                  <button onClick={enviarWhatsAppPaciente} className="w-full py-4 bg-green-600 text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2">
+                    <Share className="w-6 h-6" /> ENVIAR POR WHATSAPP
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1115,6 +1222,123 @@ export default function App() {
         )}
 
       </main>
+
+      {/* MODAL: VISTA PREVIA CARTA PROFESIONAL */}
+      {showPreview && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md p-4 flex items-center justify-center overflow-y-auto">
+          <div className="max-w-[800px] w-full bg-slate-100 rounded-[40px] shadow-2xl relative flex flex-col h-screen max-h-[95vh]">
+            {/* Header del Visor */}
+            <div className="p-6 flex justify-between items-center border-b border-slate-200 bg-white rounded-t-[40px]">
+              <div className="flex items-center gap-3">
+                 <div className="bg-medical-100 p-2 rounded-xl text-medical-600"><FileText className="w-6 h-6"/></div>
+                 <h3 className="font-black text-slate-900 uppercase tracking-tighter text-xl leading-none">Visor de Documento Clinico <br/><span className="text-[10px] text-slate-400">Verifica antes de firmar y guardar</span></h3>
+              </div>
+              <button 
+                onClick={() => setShowPreview(false)}
+                className="p-3 bg-slate-100 rounded-full text-slate-400 hover:text-red-500 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Area del "Papel Tamaño Carta" */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-12 scrollbar-hide bg-slate-200/50">
+              <div className="bg-white shadow-2xl mx-auto w-full max-w-[612px] aspect-[1/1.41] p-12 flex flex-col gap-8 text-[12px] leading-relaxed relative border border-slate-100 font-serif">
+                {/* Header Institucional */}
+                <div className="flex justify-between items-start border-b-4 border-medical-600 pb-6 font-sans">
+                  <div className="space-y-1">
+                    <h1 className="text-3xl font-black text-medical-600 tracking-tighter leading-none italic">VOLUNTARIADO MÉDICO</h1>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Atención Médica en Contingencia</p>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <div className="bg-slate-900 text-white px-3 py-1 rounded-sm text-[10px] font-black uppercase">Ficha #2024-{Math.floor(Math.random()*9000)+1000}</div>
+                    <p className="text-slate-500 font-bold">{new Date().toLocaleDateString('es-VE', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-8 font-sans">
+                  {/* Datos del Paciente */}
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 border-b border-slate-100 pb-4">
+                    <p><span className="text-medical-600 font-black uppercase text-[10px] block">Paciente:</span> <span className="font-bold text-slate-900 text-lg uppercase">{paciente.nombre}</span></p>
+                    <p><span className="text-medical-600 font-black uppercase text-[10px] block">Cédula / ID:</span> <span className="font-bold text-slate-900">{paciente.cedula || 'N/A'}</span></p>
+                    <p><span className="text-medical-600 font-black uppercase text-[10px] block">Edad / Sexo:</span> <span className="font-bold text-slate-900">{paciente.edad} años / {paciente.sexo}</span></p>
+                    <p><span className="text-medical-600 font-black uppercase text-[10px] block">Ubicación:</span> <span className="font-bold text-slate-800">{paciente.ubicacion}</span></p>
+                  </div>
+
+                  {/* Hallazgos y Diagnóstico */}
+                  <div className="space-y-4">
+                    <div className="bg-slate-50 p-6 rounded-2xl border-l-8 border-medical-600">
+                       <p className="text-[10px] font-black text-medical-600 uppercase tracking-widest mb-2">Diagnóstico Presuntivo:</p>
+                       <p className="text-xl font-black text-slate-900 uppercase leading-snug">{historia.diagnostico || 'Evaluación Médica Estándar'}</p>
+                       <p className="text-xs text-slate-500 font-bold mt-2 uppercase tracking-tighter">Nivel de Gravedad: {historia.nivel_gravedad}</p>
+                    </div>
+
+                    {recipe.medicamentos.length > 0 && (
+                      <div className="space-y-4 mt-6">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Tratamiento Sugerido:</p>
+                        <div className="space-y-4 pl-4">
+                          {recipe.medicamentos.map((m, i) => (
+                            <div key={i} className="flex flex-col">
+                              <p className="text-lg font-black text-slate-900 uppercase">{i+1}. {m.nombre}</p>
+                              <p className="text-sm text-slate-600 italic font-medium">{m.dosis}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-6 pt-6 border-t-2 border-dashed border-slate-100">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Indicaciones y Recomendaciones:</p>
+                       <p className="text-sm text-slate-800 leading-relaxed italic pr-10">{recipe.indicaciones || 'Seguir tratamiento indicado y observar signos de alarma.'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Firma */}
+                <div className="mt-auto pt-10 flex justify-between items-end border-t border-slate-100 font-sans">
+                  <div className="space-y-1">
+                    <div className="w-48 border-b-2 border-slate-900 mb-2"></div>
+                    <p className="font-black text-slate-900 text-sm uppercase">Dr. {medicoActivo?.nombre} {medicoActivo?.apellido}</p>
+                    <p className="text-[9px] text-slate-400 font-black uppercase">Médico Voluntario Registrado</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-medical-600 uppercase mb-2">Sello Digital Valido</p>
+                    <div className="inline-block p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                       <CheckCircle2 className="w-10 h-10 text-medical-600 opacity-20" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Marca de agua */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 opacity-[0.03] select-none pointer-events-none">
+                  <h1 className="text-9xl font-black">VOLUNTARIADO</h1>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer del Modal con Acciones */}
+            <div className="p-8 grid grid-cols-2 gap-4 bg-white rounded-b-[40px] shadow-inner">
+              <button 
+                onClick={() => setShowPreview(false)}
+                className="py-5 border-2 border-slate-200 text-slate-500 rounded-3xl font-black uppercase text-sm hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <ArrowRight className="w-5 h-5 rotate-180" /> Corregir Datos
+              </button>
+              <button 
+                onClick={() => {
+                  setShowPreview(false)
+                  finalizarYGuardar()
+                }}
+                disabled={loading}
+                className="py-5 bg-medical-600 text-white rounded-3xl font-black uppercase text-sm shadow-2xl flex items-center justify-center gap-3 hover:bg-medical-700 transition-all active:scale-95"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="w-6 h-6" />} 
+                Confirmar y Finalizar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navegación Inferior (Estilo Móvil Premium) */}
       <nav className="bg-white border-t p-2 flex justify-between items-center w-full sticky bottom-0 z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] overflow-x-auto no-scrollbar">
