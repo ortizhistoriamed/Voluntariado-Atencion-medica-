@@ -565,21 +565,21 @@ export default function App() {
                <div>
                  <div className="flex justify-between items-center mb-1">
                    <label className="text-[10px] font-black text-slate-400 uppercase">Anamnesis</label>
-                   <button onClick={() => toggleFieldMic('anamnesis', setHistoria, historia)} className="p-1 text-medical-600"><Mic className="w-4 h-4"/></button>
+                   <button onClick={() => toggleFieldMic('anamnesis', setHistoria, historia)} className="p-2 bg-medical-50 text-medical-600 rounded-lg shadow-sm border border-medical-100"><Mic className="w-6 h-6"/></button>
                  </div>
                  <textarea value={historia.anamnesis} onChange={e=>setHistoria({...historia, anamnesis:e.target.value})} className="w-full p-3 h-32 bg-slate-50 rounded-xl outline-none text-sm text-slate-900 font-medium" />
                </div>
                <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase">Examen Físico</label>
-                    <button onClick={() => toggleFieldMic('examen_fisico', setHistoria, historia)} className="p-1 text-medical-600"><Mic className="w-4 h-4"/></button>
+                    <button onClick={() => toggleFieldMic('examen_fisico', setHistoria, historia)} className="p-2 bg-medical-50 text-medical-600 rounded-lg shadow-sm border border-medical-100"><Mic className="w-6 h-6"/></button>
                   </div>
                  <textarea value={historia.examen_fisico} onChange={e=>setHistoria({...historia, examen_fisico:e.target.value})} className="w-full p-3 h-24 bg-slate-50 rounded-xl outline-none text-sm text-slate-900 font-medium" />
                </div>
                <div className="p-4 bg-medical-50 rounded-2xl border border-medical-100">
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[10px] font-black text-medical-600 uppercase">Diagnóstico Presuntivo</label>
-                    <button onClick={() => toggleFieldMic('diagnostico', setHistoria, historia)} className="p-1 text-medical-600"><Mic className="w-4 h-4"/></button>
+                    <button onClick={() => toggleFieldMic('diagnostico', setHistoria, historia)} className="p-2 bg-medical-50 text-medical-600 rounded-lg shadow-sm border border-medical-100"><Mic className="w-6 h-6"/></button>
                   </div>
                   <textarea value={historia.diagnostico} onChange={e=>setHistoria({...historia, diagnostico:e.target.value})} className="w-full bg-transparent p-0 h-16 outline-none font-bold text-slate-800" />
                </div>
