@@ -318,10 +318,11 @@ export default function App() {
         .upsert({ 
           nombre: paciente.nombre, 
           cedula: paciente.cedula,
-          edad: paciente.edad, 
+          edad: parseInt(paciente.edad) || null, 
           telefono: paciente.telefono,
           pref_contacto: paciente.pref_contacto,
           alergias: paciente.alergias,
+          motivo: paciente.motivo_consulta,
           medico_owner_id: medicoActivo.id
         }, { onConflict: 'cedula' })
         .select().single()
@@ -349,11 +350,11 @@ export default function App() {
         estado_general: historia.estado_general,
         glasgow: historia.glasgow,
         coloracion_piel: historia.coloracion_piel?.join(','),
-        fc: historia.fc,
-        fr: historia.fr,
-        pa: historia.pa,
-        temperatura: historia.temperatura,
-        sato2: historia.sato2,
+        fc: historia.fc ? parseInt(historia.fc) : null,
+        fr: historia.fr ? parseInt(historia.fr) : null,
+        pa: historia.pa, // PA suele ser string (120/80)
+        temperatura: historia.temperatura ? parseFloat(historia.temperatura) : null,
+        sato2: historia.sato2 ? parseInt(historia.sato2) : null,
         inspeccion_cabeza: historia.inspeccion_cabeza,
         inspeccion_torax: historia.inspeccion_torax,
         inspeccion_abdomen: historia.inspeccion_abdomen,
