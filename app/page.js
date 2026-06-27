@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { getSupabase } from '@/lib/supabase'
+import { getMedico, cerrarSesionMedico } from '@/lib/session'
+import { useRouter } from 'next/navigation'
 import { 
   Search, 
   UserPlus, 
@@ -32,6 +34,10 @@ import CustomModal from '@/components/CustomModal'
 export const dynamic = 'force-dynamic';
 
 export default function App() {
+  const router = useRouter()
+  const [medicoActivo, setMedicoActivo] = useState(null)
+  const [mostrarBienvenida, setMostrarBienvenida] = useState(false)
+  
   // Navegación
   const [activeTab, setActiveTab] = useState('search') // search, patient, clinic, recipe, settings
   
@@ -78,8 +84,14 @@ export default function App() {
   const recognitionRef = useRef(null)
 
   useEffect(() => {
-    const saved = localStorage.getItem('medico_data')
-    if (saved) setMedico(JSON.parse(saved))
+    const med = getMedico()
+    if (!med) {
+      router.push('/login')
+    } else {
+      setMedicoActivo(med)
+      setMostrarBienvenida(true)
+      setTimeout(() => setMostrarBienvenida(false), 2500)
+    }
 
     if (typeof window !== 'undefined') {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -100,11 +112,13 @@ export default function App() {
   const handleSearch = async (query) => {
     setSearchQuery(query)
     if (query.length < 3) return setSearchResults([])
-    
+    if (!medicoActivo) return
+
     const supabase = getSupabase()
     const { data } = await supabase
       .from('pacientes')
       .select('*')
+      .eq('medico_owner_id', medicoActivo.id)
       .or(`nombre.ilike.%${query}%,cedula.ilike.%${query}%`)
       .limit(5)
     
@@ -253,10 +267,10 @@ export default function App() {
     finally { setAiLoading(false) }
   }
 
-  const finalizarYGuardar = async () => {
-    setSaving(true)
-    const supabase = getSupabase()
     try {
+      const supabase = getSupabase()
+      if (!medicoActivo) return
+
       // Upsert Paciente
       const { data: pData, error: pError } = await supabase
         .from('pacientes')
@@ -266,7 +280,8 @@ export default function App() {
           edad: paciente.edad, 
           telefono: paciente.telefono,
           pref_contacto: paciente.pref_contacto,
-          alergias: paciente.alergias 
+          alergias: paciente.alergias,
+          medico_owner_id: medicoActivo.id
         }, { onConflict: 'cedula' })
         .select().single()
       
@@ -275,12 +290,12 @@ export default function App() {
       // Guardar Consulta
       const { error: cError } = await supabase.from('consultas').insert({
         paciente_id: pData.id,
-        medico_id: '88888888-8888-4888-8888-888888888888',
+        medico_owner_id: medicoActivo.id,
+        medico_nombre: `${medicoActivo.nombre} ${medicoActivo.apellido}`,
         anamnesis: historia.anamnesis,
         examen_fisico: historia.examen_fisico,
         diagnostico: historia.diagnostico,
         recipe: recipe,
-        medico_nombre: medico.nombre,
         hora_inicio: horaInicioConsulta,
         hora_fin: new Date().toISOString()
       })
@@ -297,6 +312,7 @@ export default function App() {
   }
 
   const fetchJornada = async () => {
+    if (!medicoActivo) return
     setLoading(true)
     const supabase = getSupabase()
     try {
@@ -304,6 +320,7 @@ export default function App() {
       const { data, error } = await supabase
         .from('consultas')
         .select('*, pacientes(nombre)')
+        .eq('medico_owner_id', medicoActivo.id)
         .gte('hora_inicio', `${today}T00:00:00`)
         .lte('hora_inicio', `${today}T23:59:59`)
         .order('hora_inicio', { ascending: true })
@@ -533,6 +550,23 @@ export default function App() {
                 <p className="text-sm text-slate-400">Inicia una búsqueda o crea un nuevo paciente para empezar.</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* BIENVENIDA OVERLAY */}
+        {mostrarBienvenida && medicoActivo && (
+          <div className="fixed inset-0 bg-medical-600 z-[200] flex flex-col items-center justify-center text-white animate-in fade-in duration-500">
+             <div className="bg-white/20 p-8 rounded-[40px] backdrop-blur-md border border-white/30 text-center space-y-4 animate-in zoom-in-95 duration-700">
+                <div className="text-7xl mb-4">🩺</div>
+                <h1 className="text-3xl font-black tracking-tighter uppercase">¡Bienvenido(a)!</h1>
+                <div className="space-y-1">
+                   <p className="text-xl font-bold">Dr(a). {medicoActivo.nombre} {medicoActivo.apellido}</p>
+                   <p className="text-medical-200 font-bold uppercase tracking-widest text-[10px]">{medicoActivo.especialidad}</p>
+                </div>
+                <div className="pt-4 border-t border-white/10">
+                   <p className="text-medical-100 text-xs font-medium">Turno iniciado: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+             </div>
           </div>
         )}
 
@@ -770,7 +804,52 @@ export default function App() {
           </div>
         )}
 
-        {/* PANTALLA: PERFIL MEDICO */}
+        {/* PANTALLA: PERFIL */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-20">
+            <div className="bg-white p-8 rounded-[40px] shadow-xl space-y-6 border border-slate-100">
+               <div className="flex items-center gap-4 border-b pb-6">
+                  <div className="bg-medical-500 p-4 rounded-3xl text-white">
+                     <UserCircle className="w-12 h-12" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 leading-none">{medicoActivo?.nombre} {medicoActivo?.apellido}</h2>
+                    <p className="text-sm font-bold text-medical-600 uppercase tracking-widest mt-1">{medicoActivo?.especialidad}</p>
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                 <div className="p-4 bg-slate-50 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cédula</p>
+                    <p className="font-bold text-slate-800">{medicoActivo?.cedula}</p>
+                 </div>
+                 <div className="p-4 bg-slate-50 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Correo</p>
+                    <p className="font-bold text-slate-800">{medicoActivo?.correo || 'No registrado'}</p>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">WhatsApp Coordinador</label>
+                    <input 
+                      value={medico.whatsapp_coordinador} 
+                      onChange={e=>setMedico({...medico, whatsapp_coordinador:e.target.value})} 
+                      className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-medical-500 outline-none font-bold" 
+                      placeholder="58412..." 
+                    />
+                 </div>
+                 <button onClick={saveMedico} className="w-full py-4 bg-medical-600 text-white rounded-2xl font-black shadow-lg">GUARDAR AJUSTES</button>
+               </div>
+
+               <button 
+                 onClick={cerrarSesionMedico}
+                 className="w-full py-4 border-2 border-red-500 text-red-500 rounded-2xl font-black hover:bg-red-50 transition-all"
+               >
+                 CERRAR SESIÓN DEL TURNO
+               </button>
+            </div>
+          </div>
+        )}
+
+        {/* PANTALLA: PERFIL MEDICO (LEGACY) */}
         {activeTab === 'profile' && (
           <div className="bg-white p-8 rounded-3xl shadow-xl space-y-6 animate-in slide-in-from-bottom-5">
             <h2 className="text-xl font-black flex items-center gap-2 text-slate-900 border-b pb-4"><UserCircle className="text-medical-500" /> PERFIL PROFESIONAL</h2>
