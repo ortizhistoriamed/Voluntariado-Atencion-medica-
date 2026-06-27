@@ -14,14 +14,19 @@ export async function POST(req) {
     const systemPrompt = `Eres un asistente médico clínico. Genera récipes médicos profesionales en español. Responde SOLO con JSON válido, sin markdown, sin explicaciones.`
     
     const userPrompt = `
-      Paciente: ${paciente.nombre}, ${paciente.edad} años.
-      Patologías base: ${paciente.patologias}.
-      Alergias: ${paciente.alergias}.
-      Medicamentos actuales: ${paciente.medicamentos}.
-
-      Historia: ${historia.anamnesis}.
-      Examen físico: ${historia.examen_fisico}.
-      Diagnóstico: ${historia.diagnostico}.
+      Paciente: ${paciente.nombre}, ${paciente.edad} años, sexo ${paciente.sexo}, ubicación: ${paciente.ubicacion}.
+      Canal de atención: ${paciente.canalContacto}.
+      Motivo: ${paciente.motivo}.
+      Síntomas desde: ${paciente.inicioSintomas}. Características: ${paciente.caracteristicasSintoma}.
+      Antecedentes: ${paciente.antecedentes}. Alergias: ${paciente.alergias}.
+      Medicamentos habituales: ${paciente.medicamentosHabituales}.
+      Contexto: zona desastre=${paciente.zonaDesastre}, agua=${paciente.accesoAgua}, alimentos=${paciente.accesoAlimentos}.
+      Examen físico: ${paciente.estadoGeneral}. Glasgow: ${paciente.glasgow}. Piel: ${paciente.coloracionPiel}.
+      Signos vitales: FC=${paciente.fc}, FR=${paciente.fr}, PA=${paciente.pa}, Temp=${paciente.temperatura}, SatO2=${paciente.sato2}.
+      Inspección: cabeza=${paciente.inspeccionCabeza}, tórax=${paciente.inspeccionTorax}, abdomen=${paciente.inspeccionAbdomen}, extremidades=${paciente.inspeccionExtremidades}.
+      Diagnóstico presuntivo: ${paciente.diagnosticoPresuntivo}.
+      Gravedad: ${paciente.nivelGravedad}.
+      Banderas rojas: ${paciente.banderasRojas ? paciente.banderasRojas.join(', ') : 'ninguna'}.
 
       Genera un récipe médico con este JSON exacto:
       {
@@ -32,6 +37,7 @@ export async function POST(req) {
         "indicaciones": "",
         "proxima_cita": ""
       }
+      Solo JSON, sin markdown.
     `
 
     const chatCompletion = await groq.chat.completions.create({

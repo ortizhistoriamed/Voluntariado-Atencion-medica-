@@ -344,16 +344,20 @@ export default function App() {
     // Prefijo 58 si no lo tiene (asumiendo Venezuela por defecto)
     const telFinal = telefono.startsWith('58') ? telefono : `58${telefono}`
 
-    const texto = `Hola *${paciente.nombre}*, aquí tienes tu récipe médico:\n\n` +
-      `📋 *Diagnóstico:* ${recipe.diagnostico_confirmado || 'Evaluado'}\n\n` +
-      `💊 *Medicamentos:*\n` +
-      (recipe.medicamentos || []).map(m =>
-        `• ${m.nombre} - ${m.dosis} - ${m.indicaciones}`
-      ).join('\n') +
-      `\n\n📌 *Indicaciones Generales:* ${recipe.indicaciones}\n` +
-      `📅 *Próxima cita:* ${recipe.proxima_cita || 'Por definir'}\n\n` +
-      `_Atentamente: Dr(a). ${medico.nombre}_\n` +
-      `_Generado desde Voluntariado Médico App_`
+    const meds = (recipe.medicamentos || []).map(m =>
+      `• ${m.nombre} ${m.dosis} — ${m.indicaciones}`
+    ).join('\n')
+
+    const texto =
+      `🏥 *RÉCIPE MÉDICO*\n` +
+      `👤 *Paciente:* ${paciente.nombre}\n` +
+      `👨‍⚕️ *Médico:* Dr(a). ${medicoActivo?.nombre} ${medicoActivo?.apellido}\n` +
+      `🎓 *Especialidad:* ${medicoActivo?.especialidad || 'General'}\n` +
+      `📅 *Fecha:* ${new Date().toLocaleDateString('es-VE')}\n\n` +
+      `💊 *Medicamentos:*\n${meds}\n\n` +
+      `📌 *Indicaciones:* ${recipe.indicaciones}\n` +
+      (recipe.proxima_cita ? `🗓 *Próxima cita:* ${recipe.proxima_cita}\n` : '') +
+      `\n_Voluntariado Médico_`
 
     if (!telefono) {
       showAlert("Sin Teléfono", "Este paciente no tiene un número registrado.", "error")
@@ -368,10 +372,18 @@ export default function App() {
     const now = new Date()
     
     doc.setFontSize(18).text("INFORME DE JORNADA MÉDICA", 105, 20, { align: 'center' })
-    doc.setFontSize(10).text(`Fecha: ${now.toLocaleDateString()}\nMédico: ${medico.nombre}\nTotal de pacientes: ${jornadaConsultas.length}`, 20, 35)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Médico: Dr(a). ${medicoActivo?.nombre} ${medicoActivo?.apellido}`, 20, 35)
+    doc.text(`Especialidad: ${medicoActivo?.especialidad || 'General'}`, 20, 42)
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-VE')}`, 20, 49)
+    doc.text(`Total de pacientes: ${jornadaConsultas.length}`, 20, 56)
+
+    doc.setLineWidth(0.5)
+    doc.line(20, 60, 190, 60)
 
     doc.autoTable({
-      startY: 50,
+      startY: 65,
       head: [['#', 'Paciente', 'Hora', 'Diagnóstico', 'Récipe']],
       body: jornadaConsultas.map((c, i) => [
         i + 1,
