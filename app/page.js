@@ -324,7 +324,6 @@ export default function App() {
       if (pError) throw pError
 
       // Guardar Consulta
-      const supabase = getSupabase()
       const { error: cError } = await supabase.from('consultas').insert({
         paciente_id: pData.id,
         medico_owner_id: medicoActivo.id,
