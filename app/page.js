@@ -297,6 +297,7 @@ export default function App() {
         anamnesis: historia.anamnesis,
         examen_fisico: historia.examen_fisico,
         diagnostico: historia.diagnostico,
+        canal_contacto: paciente.pref_contacto,
         recipe: recipe,
         hora_inicio: horaInicioConsulta,
         hora_fin: new Date().toISOString()
@@ -631,7 +632,9 @@ export default function App() {
                     <select value={paciente.pref_contacto} onChange={e=>setPaciente({...paciente, pref_contacto:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl outline-none border text-xs font-bold text-slate-700">
                       <option>WhatsApp</option>
                       <option>Llamada</option>
+                      <option>Video</option>
                       <option>SMS</option>
+                      <option>Otro</option>
                     </select>
                   </div>
                 </div>

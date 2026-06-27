@@ -370,7 +370,7 @@ export default function FichaClinicaPage() {
   }
 
   // Ayudantes de UI
-  const isEmergency = diagnosticoPlan.nivelGravedad === 'Emergencia' || diagnosticoPlan.banderas_rojas.length > 0
+  const isEmergency = diagnosticoPlan.nivelGravedad === 'Emergencia' || (diagnosticoPlan.banderas_rojas && diagnosticoPlan.banderas_rojas.length > 0)
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32">
@@ -386,11 +386,12 @@ export default function FichaClinicaPage() {
       <header className="sticky top-0 bg-white border-b shadow-sm p-4 z-40">
         <div className="max-w-xl mx-auto flex flex-col gap-3">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Canal de Atención</p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {[
               { id: 'Llamada', icon: Phone, label: 'Llamada' },
               { id: 'WhatsApp', icon: MessageCircle, label: 'WhatsApp' },
               { id: 'Video', icon: Video, label: 'Video' },
+              { id: 'SMS', icon: MessageCircle, label: 'SMS' },
               { id: 'Otro', icon: Laptop, label: 'Otro' }
             ].map(canal => (
               <button
