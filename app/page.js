@@ -324,17 +324,19 @@ export default function App() {
       if (pError) throw pError
 
       // Guardar Consulta
+      const supabase = getSupabase()
       const { error: cError } = await supabase.from('consultas').insert({
         paciente_id: pData.id,
         medico_owner_id: medicoActivo.id,
         medico_nombre: `${medicoActivo.nombre} ${medicoActivo.apellido}`,
         canal_contacto: paciente.pref_contacto,
+        paciente_telefono: paciente.telefono,
         
         // Datos clínicos nuevos
         motivo: paciente.motivo_consulta,
         inicio_sintomas: paciente.inicio_sintomas,
         caracteristicas_sintoma: paciente.caracteristicas_sintoma,
-        contexto_contingencia: paciente.contexto_contingencia,
+        contexto_contingencia: (paciente.contexto_contingencia || []).join(', '),
         antecedentes: paciente.antecedentes,
         alergias: paciente.alergias,
         medicamentos_habituales: paciente.medicamentos_habituales,
@@ -759,8 +761,8 @@ export default function App() {
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ubicación</label>
-                      <input value={paciente.ubicacion} onChange={e=>setPaciente({...paciente, ubicacion:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-medical-300 font-bold" placeholder="Sector/Refugio" />
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Teléfono / WhatsApp</label>
+                      <input type="tel" value={paciente.telefono} onChange={e=>setPaciente({...paciente, telefono:e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-medical-300 font-bold" placeholder="04XX-XXXXXXX" />
                     </div>
                   </div>
 
@@ -788,22 +790,21 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* CONTEXTO DE CONTINGENCIA (CHIPS) */}
                   <div className="bg-orange-50/50 p-6 rounded-[32px] border border-orange-100 space-y-6">
-                    <p className="text-xs font-black text-orange-800 uppercase flex items-center gap-2"><Info className="w-4 h-4"/> Contexto de Contingencia (Venezuela Terremoto)</p>
+                    <p className="text-xs font-black text-orange-800 uppercase flex items-center gap-2"><Info className="w-4 h-4"/> Contexto de Contingencia (Terremoto)</p>
                     
                     {[
                       { 
-                        title: 'Situación del paciente', 
-                        items: ['🏚️ Damnificado por terremoto', '埋 En albergue/refugio', '🏠 En vivienda dañada', '🌳 A la intemperie', '🚗 Desplazado de su zona'] 
+                        title: 'Situación:', 
+                        items: ['🏚️ Damnificado por terremoto', '🏕️ En albergue/refugio', '🏠 En vivienda dañada', '🌳 A la intemperie', '🚗 Desplazado de su zona'] 
                       },
                       { 
-                        title: 'Acceso a servicios básicos', 
-                        items: ['💧 Sin agua potable', '🍽️ Sin acceso a alimentos', '⚡ Sin electricidad', '📵 Sin comunicación estable', '🚑 Sin acceso a salud cercano'] 
+                        title: 'Servicios básicos:', 
+                        items: ['💧 Sin agua potable', '🍽️ Sin alimentos', '⚡ Sin electricidad', '📵 Sin comunicación', '🚑 Sin centro de salud cercano'] 
                       },
                       { 
-                        title: 'Condición relacionada al evento', 
-                        items: ['🦴 Posible trauma por derrumbe', '🧱 Atrapado bajo escombros', '😰 Crisis de ansiedad/estrés', '👁️ Exposición traumática', '💊 Sin medicamentos crónicos', '🩸 Herida por escombros/vidrios'] 
+                        title: 'Condición por el evento:', 
+                        items: ['🦴 Posible trauma por derrumbe', '🧱 Estuvo atrapado bajo escombros', '😰 Crisis de ansiedad post-trauma', '👁️ Exposición a situaciones traumáticas', '💊 Sin medicamentos crónicos', '🩸 Herida por escombros o vidrios'] 
                       }
                     ].map((grupo, idx) => (
                       <div key={idx} className="space-y-3">
@@ -829,8 +830,8 @@ export default function App() {
                       </div>
                     ))}
 
-                    {(paciente.contexto_contingencia?.includes('🧱 Atrapado bajo escombros') || paciente.contexto_contingencia?.includes('🦴 Posible trauma por derrumbe')) && (
-                      <div className="bg-yellow-100 p-4 rounded-2xl border-2 border-yellow-200 text-yellow-900 text-[11px] font-bold animate-bounce mt-4">
+                    {(paciente.contexto_contingencia?.includes('🧱 Estuvo atrapado bajo escombros') || paciente.contexto_contingencia?.includes('🦴 Posible trauma por derrumbe')) && (
+                      <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3 text-yellow-800 text-sm font-semibold animate-pulse">
                         ⚠️ Considerar: síndrome de aplastamiento, trauma cerrado, lesiones en columna.
                       </div>
                     )}
