@@ -709,25 +709,10 @@ export default function App() {
                       <span className="text-[10px] font-black uppercase text-green-700">Enviar WhatsApp</span>
                     </button>
                   </div>
-
-                  <button 
-                    onClick={() => {
-                      setFinalizado(false);
-                      setSearchQuery('');
-                      setActiveTab('search');
-                      setPaciente({id:'', nombre:'', edad:'', cedula:'', telefono:'', pref_contacto:'WhatsApp', sexo:'', alergias:'', contexto_contingencia:[], otros_detalles_contingencia:''});
-                      setHistoria({anamnesis:'', examen_fisico:'', diagnostico:'', nivel_gravedad:'Leve', banderas_rojas:[]});
-                      setRecipe({diagnostico_confirmado:'', medicamentos:[], indicaciones:'', proxima_cita:''});
-                    }} 
-                    className="w-full py-5 bg-slate-900 dark:bg-slate-800 text-white rounded-3xl font-black uppercase text-sm shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
-                  >
-                     Nueva Consulta <ArrowRight />
-                  </button>
+                  </div>
                 </div>
               </div>
             )}
-          </div>
-        )}
 
         {/* BIENVENIDA OVERLAY */}
         {mostrarBienvenida && medicoActivo && (

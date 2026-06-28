@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import { getMedico } from '@/lib/session'
 import MicButton from '@/components/MicButton'
 import { 
@@ -53,6 +53,7 @@ export default function FichaClinicaPage() {
     edad: '',
     sexo: '',
     ubicacion: '',
+    telefono: '',
     motivo: '',
     inicioSintomas: '',
     caracteristicasSintoma: '',
@@ -216,12 +217,16 @@ export default function FichaClinicaPage() {
 
     setSaving(true)
     try {
+      const supabase = getSupabase()
       const { data, error } = await supabase
         .from('consultas')
         .insert({
           medico_id: medico.id,
+          medico_owner_id: medico.id,
+          hora_inicio: new Date().toISOString(),
           medico_nombre: medico.nombre,
           paciente_nombre: pacienteData.nombre,
+          paciente_telefono: pacienteData.telefono,
           paciente_edad: pacienteData.edad,
           paciente_sexo: pacienteData.sexo,
           paciente_ubicacion: pacienteData.ubicacion,
@@ -363,54 +368,32 @@ export default function FichaClinicaPage() {
     doc.save(`Ficha_Clinica_${pacienteData.nombre.replace(/\s+/g, '_')}.pdf`)
   }
 
-  // --- ENVIAR WHATSAPP ---
-  const enviarWhatsApp = () => {
+    const enviarWhatsApp = () => {
+    const tel = (pacienteData.telefono || '').replace(/\D/g, '')
+    if (!tel) { alert('Agrega el teléfono del paciente en la Sección 1'); return }
+    const numero = tel.startsWith('58') ? tel : `58${tel}`
+    const meds = recipe.medicamentos?.map(m => `• ${m.nombre} ${m.dosis} — ${m.frecuencia} por ${m.duracion}`).join('\n') || 'Sin medicamentos'
     const texto =
-      `Hola ${pacienteData.nombre}, le saluda el equipo de *Voluntariado Médico*.\n\n` +
-      `A continuación le enviamos el resumen completo de su consulta médica de hoy:\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `📋 *HISTORIA CLÍNICA*\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `👤 Paciente: ${pacienteData.nombre}, ${pacienteData.edad} años, ${pacienteData.sexo}\n` +
-      `📍 Ubicación: ${pacienteData.ubicacion || 'No especificada'}\n` +
-      `📞 Canal de atención: ${canalContacto}\n` +
-      `📅 Fecha: ${new Date().toLocaleDateString('es-VE')}\n` +
-      `👨‍⚕️ Médico: Dr(a). ${medico.nombre} ${medico.apellido || ''} — ${medico.especialidad || 'General'}\n\n` +
-      `🔍 *MOTIVO DE CONSULTA*\n${pacienteData.motivo}\n\n` +
-      (pacienteData.inicioSintomas ? `⏱ Inicio de síntomas: ${new Date(pacienteData.inicioSintomas).toLocaleString('es-VE')}\n` : '') +
-      (pacienteData.caracteristicasSintoma ? `📝 Características: ${pacienteData.caracteristicasSintoma}\n` : '') +
-      (pacienteData.antecedentes ? `\n🏥 *ANTECEDENTES*\n${pacienteData.antecedentes}\n` : '') +
-      (pacienteData.alergias ? `⚠️ Alergias: ${pacienteData.alergias}\n` : '') +
-      (pacienteData.medicamentosHabituales ? `💊 Medicamentos habituales: ${pacienteData.medicamentosHabituales}\n` : '') +
-      `\n━━━━━━━━━━━━━━━━━━━━\n` +
-      `🩺 *EXAMEN FÍSICO*\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      (examenFisico.estadoGeneral ? `Estado general: ${examenFisico.estadoGeneral}\n` : '') +
-      (examenFisico.glasgow ? `Glasgow: ${examenFisico.glasgow}\n` : '') +
-      (examenFisico.coloracionPiel?.length ? `Coloración: ${examenFisico.coloracionPiel.join(', ')}\n` : '') +
-      ((examenFisico.fc || examenFisico.fr || examenFisico.pa || examenFisico.temperatura || examenFisico.sato2) ?
-        `\n📊 *Signos Vitales*\n` +
-        (examenFisico.fc ? `FC: ${examenFisico.fc} lpm\n` : '') +
-        (examenFisico.fr ? `FR: ${examenFisico.fr} rpm\n` : '') +
-        (examenFisico.pa ? `PA: ${examenFisico.pa} mmHg\n` : '') +
-        (examenFisico.temperatura ? `Temp: ${examenFisico.temperatura}°C\n` : '') +
-        (examenFisico.sato2 ? `SatO2: ${examenFisico.sato2}%\n` : '')
-      : '') +
-      `\n━━━━━━━━━━━━━━━━━━━━\n` +
-      `🔬 *DIAGNÓSTICO Y PLAN*\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `Diagnóstico: ${recipe.diagnostico_confirmado || diagnosticoPlan.diagnosticoPresuntivo}\n` +
-      `Gravedad: ${diagnosticoPlan.nivelGravedad}\n` +
-      (diagnosticoPlan.planAccion ? `Plan: ${diagnosticoPlan.planAccion}\n` : '') +
-      (diagnosticoPlan.criterioDerivacion ? `⚠️ Se recomienda acudir a un centro hospitalario.\n` : '') +
-      `\n━━━━━━━━━━━━━━━━━━━━\n` +
-      `💊 *RÉCIPE MÉDICO*\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      (recipe.medicamentos?.length > 0
-        ? recipe.medicamentos.map(m => `• ${m.nombre} ${m.dosis} — ${m.frecuencia} por ${m.duracion}`).join('\n')
-        : 'Sin medicamentos indicados') +
-      `\n\n📌 *Indicaciones:*\n${recipe.indicaciones || 'Ver con su médico'}\n` +
-      (recipe.proxima_cita ? `\n🗓 *Próxima cita:* ${recipe.proxima_cita}\n` : '') +
+      `Hola ${pacienteData.nombre}, le saluda *Voluntariado Médico*.\n\n` +
+      `📋 *RESUMEN DE CONSULTA*\n` +
+      `👤 ${pacienteData.nombre}, ${pacienteData.edad} años | ${pacienteData.sexo}\n` +
+      `📍 ${pacienteData.ubicacion} | 📞 ${canalContacto}\n` +
+      `👨‍⚕️ Dr(a). ${medico.nombre} ${medico.apellido} — ${medico.especialidad}\n\n` +
+      `🔍 *Motivo:* ${pacienteData.motivo}\n` +
+      (pacienteData.antecedentes ? `🏥 *Antecedentes:* ${pacienteData.antecedentes}\n` : '') +
+      (pacienteData.alergias ? `⚠️ *Alergias:* ${pacienteData.alergias}\n` : '') +
+      `\n🩺 *Examen:* ${examenFisico.estadoGeneral || 'Ver notas'} | Glasgow: ${examenFisico.glasgow}\n` +
+      ((examenFisico.fc || examenFisico.pa || examenFisico.sato2) ? `📊 FC:${examenFisico.fc||'--'} PA:${examenFisico.pa||'--'} SatO2:${examenFisico.sato2||'--'}%\n` : '') +
+      `\n🔬 *Diagnóstico:* ${recipe.diagnostico_confirmado || diagnosticoPlan.diagnosticoPresuntivo}\n` +
+      `⚠️ *Gravedad:* ${diagnosticoPlan.nivelGravedad}\n` +
+      (diagnosticoPlan.criterioDerivacion ? `🏥 *Requiere atención presencial*\n` : '') +
+      `\n💊 *RÉCIPE*\n${meds}\n\n` +
+      `📌 *Indicaciones:*\n${recipe.indicaciones || 'Ver con su médico'}\n` +
+      (recipe.proxima_cita ? `🗓 *Próxima cita:* ${recipe.proxima_cita}\n` : '') +
+      `\n_Guarde este mensaje como respaldo de su consulta._`
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank')
+  }
+a_cita}\n` : '') +
       `\n━━━━━━━━━━━━━━━━━━━━\n` +
       `_Este resumen fue generado por el sistema de Voluntariado Médico de Atención en Emergencias._\n` +
       `_Guarde este mensaje como respaldo de su consulta._`
