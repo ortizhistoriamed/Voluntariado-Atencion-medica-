@@ -709,7 +709,6 @@ export default function App() {
                       <span className="text-[10px] font-black uppercase text-green-700">Enviar WhatsApp</span>
                     </button>
                   </div>
-                  </div>
                 </div>
               </div>
             )}
